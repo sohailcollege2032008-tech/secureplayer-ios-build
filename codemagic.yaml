@@ -12,27 +12,47 @@ workflows:
         script: |
           cd ios && pod install
 
-      # No Apple Developer account involved at all — this deliberately skips
-      # code signing entirely. Sideloadly does the actual signing later
-      # using whoever's own free Apple ID installs the app, so this build
-      # only needs to produce a valid, unsigned real-device binary.
-      - name: Flutter build (release, real device target, unsigned)
+      # `flutter build ios --no-codesign` still enforces a Development Team
+      # check for real-device (non-Simulator) targets — it only cleanly
+      # skips signing for Simulator builds. This step's real job is just
+      # Dart AOT compilation + plugin embedding + Xcode project prep, so its
+      # own exit code is ignored; the actual unsigned build happens in the
+      # next step via a direct xcodebuild invocation, which is the
+      # documented, reliable way to get a real-device unsigned build.
+      - name: Flutter prepare (Dart AOT + plugin embedding)
         script: |
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign || true
 
-      # `flutter build ios` only produces the raw Runner.app bundle, not a
-      # packaged .ipa. An .ipa is just a zip of a specific "Payload/" folder
-      # structure — Sideloadly expects that exact structure, not a bare
-      # .app, so it's packaged by hand here.
+      # No Apple Developer account involved at all. Sideloadly does the
+      # actual signing later using whoever's own free Apple ID installs the
+      # app — this only needs to produce a valid, unsigned real-device
+      # binary. CONFIGURATION_BUILD_DIR pins the output to a known path
+      # instead of relying on derivedData's default (unpredictable) location.
+      - name: Xcode build (real device target, unsigned)
+        script: |
+          cd ios
+          xcodebuild build \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CONFIGURATION_BUILD_DIR="$CM_BUILD_DIR/build/ios/unsigned"
+
+      # An .ipa is just a zip of a specific "Payload/" folder structure —
+      # Sideloadly expects that exact structure, not a bare .app.
       - name: Package Runner.app into an unsigned .ipa
         script: |
-          cd build/ios/iphoneos
+          cd build/ios/unsigned
           mkdir -p Payload
           cp -r Runner.app Payload/
           zip -r secure_player_unsigned.ipa Payload
     artifacts:
-      - build/ios/iphoneos/secure_player_unsigned.ipa
-      - build/ios/iphoneos/*.xcresult
+      - build/ios/unsigned/secure_player_unsigned.ipa
+      - build/ios/unsigned/*.xcresult
     triggering:
       events:
         - push
