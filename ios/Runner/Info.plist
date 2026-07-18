@@ -27,6 +27,13 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<!-- Encryption use is limited to the exempt categories: standard TLS/HTTPS
+	     (cert_pinning_service.dart) and standard, non-authored algorithms
+	     (AES-128-CBC, AES-256-GCM, HKDF-SHA256) used solely for video
+	     copy-protection/DRM — both exempt under EAR, no export documentation
+	     required. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
