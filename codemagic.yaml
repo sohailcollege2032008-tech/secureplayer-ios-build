@@ -4,7 +4,12 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
-      flutter: stable
+      # Pinned to match the local dev machine's exact version, not the
+      # floating "stable" tag — better_player ^0.0.84 uses Dart's hashValues,
+      # which is fully removed on newer Dart SDKs shipped with more recent
+      # Flutter stable releases. This project's Android builds only work
+      # today because the dev machine happens to be on this older version.
+      flutter: 3.41.9
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
