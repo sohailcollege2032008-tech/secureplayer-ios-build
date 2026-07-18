@@ -1,4 +1,5 @@
 import Foundation
+import MachO // _dyld_image_count / _dyld_get_image_name
 import Network
 
 enum SecurityChannel {
