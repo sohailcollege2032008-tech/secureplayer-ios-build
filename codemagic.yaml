@@ -79,3 +79,48 @@ workflows:
     triggering:
       events:
         - push
+
+  ios-simulator-build:
+    name: iOS Simulator build (for Appetize.io/LambdaTest/BrowserStack)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: 3.41.9
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios && pod install
+
+      # Same upstream better_player bug as the device workflow — this is a
+      # Dart-source-level issue, unrelated to build target architecture.
+      - name: Patch better_player hashValues -> Object.hash (upstream bug)
+        script: |
+          BP_DIR=$(find "$HOME/.pub-cache/hosted/pub.dev" -maxdepth 1 -iname "better_player-*" | head -1)
+          echo "Patching better_player at: $BP_DIR"
+          for f in drm_init_data.dart hls_track_metadata_entry.dart scheme_data.dart variant_info.dart; do
+            FILE="$BP_DIR/lib/src/hls/hls_parser/$f"
+            sed -i '' 's/hashValues(/Object.hash(/g' "$FILE"
+          done
+
+      # Simulator builds never need code signing at all — no Development
+      # Team check to work around here, unlike the real-device workflow.
+      # flutter build ios --simulator handles the whole xcodebuild
+      # invocation itself cleanly for this target.
+      - name: Flutter build (Simulator target)
+        script: |
+          flutter build ios --simulator --release
+
+      # Appetize.io/LambdaTest/BrowserStack expect a plain .zip containing
+      # the .app bundle directly — not the Payload/ .ipa structure real
+      # devices need.
+      - name: Zip Runner.app for online simulator services
+        script: |
+          cd build/ios/iphonesimulator
+          zip -r secure_player_simulator.zip Runner.app
+    artifacts:
+      - build/ios/iphonesimulator/secure_player_simulator.zip
+    triggering:
+      events:
+        - push
