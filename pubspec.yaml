@@ -1,7 +1,7 @@
 name: secure_player
 description: SecurePlayer - Offline encrypted educational video platform for students.
 publish_to: 'none'
-version: 1.0.0+128
+version: 1.0.0+129
 
 environment:
   sdk: '>=3.3.0 <4.0.0'

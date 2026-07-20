@@ -26,6 +26,19 @@ class RootDetectionService {
   static const _skip =
       bool.fromEnvironment('SKIP_ROOT_CHECK', defaultValue: false);
 
+  // TEMPORARY — added 2026-07-20 to unblock the client's TestFlight tester
+  // who was hard-blocked on launch. Root cause was never conclusively
+  // isolated to one of the 6 iOS checks below; build 128 fixed the one
+  // known bug (isSignatureValid rejecting a clean TestFlight install), but
+  // wasn't verified on-device before this override was requested. While
+  // this is true, iOS ships with ZERO jailbreak/Frida/tamper protection —
+  // Android is unaffected (detectCause()'s Android branch above is separate
+  // and untouched). MUST be set back to false before any public App Store
+  // release. Revert plan: flip to false, rebuild, hand the tester build 128
+  // (or newer) and confirm it launches clean; only then remove this flag
+  // and the early-return in _detectCauseIOS() entirely.
+  static const _iosDetectionTemporarilyDisabled = true;
+
   // Obfuscated markers: frida, gum-js-loop, frida-agent, linjector, re.frida
   static final List<String> _fridaMarkers = [
     'ZnJpZGE=', 'Z3VtLWpzLWxvb3A=', 'ZnJpZGEtYWdlbnQ=', 'bGluamVjdG9y', 'cmUuZnJpZGE=',
@@ -144,6 +157,7 @@ class RootDetectionService {
   }
 
   Future<RootDetectionCause> _detectCauseIOS() async {
+    if (_iosDetectionTemporarilyDisabled) return RootDetectionCause.none;
     try {
       // 1. flutter_jailbreak_detection (Cydia/Sileo paths, sandbox check,
       //    fork test — via IOSSecuritySuite under the hood)
