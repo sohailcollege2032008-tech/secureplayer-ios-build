@@ -210,11 +210,21 @@ enum SecurityChannel {
   // Deliberately NOT a pinned-hash check like Android's isSignatureValid.
   // Sideloadly + a free personal-team Apple ID produces a fresh, unstable
   // ad-hoc signing identity each time (re-signed every 7 days) — there is
-  // nothing meaningful to pin yet, and we don't know the eventual
-  // production distribution method (App Store strips embedded
-  // .mobileprovision entirely; Enterprise/ad-hoc don't). This checks
-  // structural consistency instead: profile exists, and its authorized
-  // bundle ID matches the running bundle ID.
+  // nothing meaningful to pin yet. This checks structural consistency
+  // instead: profile exists, and its authorized bundle ID matches the
+  // running bundle ID — for Development/Ad-Hoc/Enterprise distribution.
+  //
+  // App Store / TestFlight distribution does NOT embed a provisioning
+  // profile at all — this is expected, not suspicious. A missing profile
+  // is only meaningful once it's ALSO missing the App Store receipt that
+  // every genuine App Store/TestFlight install has (Apple's own signing
+  // infrastructure vouches for it, similar in spirit to how Android's
+  // isSignatureValid trusts the OS's own signing verification rather than
+  // re-deriving it independently). Missing BOTH signals is what's actually
+  // suspicious (a stripped or repackaged bundle), not missing the profile
+  // alone — this was flagged as a known gap in the original comment here
+  // ("the day this app targets true App Store distribution, this function
+  // must be revisited") and confirmed hitting real TestFlight installs.
   private static func isSignatureValid() -> Bool {
     #if targetEnvironment(simulator)
     return true
@@ -222,7 +232,11 @@ enum SecurityChannel {
     guard let profilePath = Bundle.main.path(forResource: "embedded", ofType: "mobileprovision"),
           let profileData = FileManager.default.contents(atPath: profilePath),
           let profileString = String(data: profileData, encoding: .isoLatin1) else {
-      return false // fail closed: no embedded profile at all is suspicious for this distribution channel
+      if let receiptPath = Bundle.main.appStoreReceiptURL?.path,
+         FileManager.default.fileExists(atPath: receiptPath) {
+        return true // genuine App Store/TestFlight install — no profile is expected here
+      }
+      return false // fail closed: neither signal present is genuinely suspicious
     }
     // The plist payload sits as plaintext XML inside the outer CMS/PKCS#7
     // signature blob — slice it out by bracket-matching rather than a full
