@@ -61,5 +61,19 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- file_picker and webview_flutter link photo-library/camera/location
+	     capable code on iOS even though this app never actually invokes
+	     those capabilities itself — Apple's automated binary scan flags any
+	     linked capability regardless of whether app logic calls it, and
+	     rejects the build without a matching usage string. Descriptions
+	     below are written to be honest about that (no camera capture, no
+	     location feature, no profile photo upload anywhere in this app),
+	     rather than describing features that don't exist. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>يستخدم التطبيق منتقي الملفات لاختيار واستيراد ملف الكورس (.sec) من جهازك.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>لا يستخدم التطبيق الكاميرا مباشرة، لكن المتصفح المدمج بداخله قد يطلب هذا الإذن إذا تطلب أحد المحتويات المعروضة ذلك.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>لا يستخدم التطبيق تحديد الموقع مباشرة، لكن المتصفح المدمج بداخله قد يطلب هذا الإذن إذا تطلب أحد المحتويات المعروضة ذلك.</string>
 </dict>
 </plist>
