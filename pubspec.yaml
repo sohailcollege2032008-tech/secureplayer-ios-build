@@ -33,7 +33,7 @@ dependencies:
   flutter_jailbreak_detection: ^1.7.0
 
   # Video playback
-  better_player: ^0.0.83
+  better_player_plus: ^1.2.1
 
   # Local HTTP server
   shelf: ^1.4.2

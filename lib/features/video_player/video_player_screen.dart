@@ -17,7 +17,7 @@ import 'package:win32/win32.dart'
         SWP_NOACTIVATE,
         HWND_TOP;
 
-import 'package:better_player/better_player.dart';
+import 'package:better_player_plus/better_player_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -448,7 +448,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
         autoDispose: false,
         controlsConfiguration: BetterPlayerControlsConfiguration(
           playerTheme: BetterPlayerTheme.custom,
-          customControlsBuilder: (_, __) => const SizedBox.shrink(),
+          customControlsBuilder: (_, __, ___) => const SizedBox.shrink(),
         ),
       ),
       betterPlayerDataSource: dataSource,
