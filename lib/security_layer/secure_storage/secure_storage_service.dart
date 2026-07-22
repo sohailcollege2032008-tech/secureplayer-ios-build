@@ -20,5 +20,10 @@ class SecureStorageService {
     return v != null && v.isNotEmpty;
   }
 
+  /// Wipes every entry (course keys + cached student profile) — used on
+  /// account deletion, since none of it is meaningful once the account
+  /// it belongs to no longer exists.
+  Future<void> deleteAll() => _storage.deleteAll();
+
   static String _keyName(String courseId) => 'course_key_$courseId';
 }

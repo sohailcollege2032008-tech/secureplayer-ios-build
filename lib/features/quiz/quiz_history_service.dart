@@ -141,6 +141,14 @@ class QuizHistoryService {
     );
     return rows.map(LocalQuizAttempt.fromMap).toList();
   }
+
+  /// Wipes local quiz history — used on account deletion. Safe to treat as
+  /// single-user data: the device-binding model only ever lets one student
+  /// account be active on a given device at a time.
+  Future<void> clearAll() async {
+    final db = await _database;
+    await db.delete('quiz_attempts');
+  }
 }
 
 final quizHistoryServiceProvider =

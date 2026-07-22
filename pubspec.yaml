@@ -1,7 +1,7 @@
 name: secure_player
 description: SecurePlayer - Offline encrypted educational video platform for students.
 publish_to: 'none'
-version: 1.0.0+129
+version: 1.0.0+130
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -85,17 +85,23 @@ dev_dependencies:
   flutter_lints: ^3.0.0
   msix: ^3.16.7
   path_provider_platform_interface: ^2.1.2
+  flutter_launcher_icons: ^0.14.4
 
 msix_config:
-  display_name: SecurePlayer
-  publisher_display_name: SecurePlayer
-  identity_name: com.secureplayer.app
+  display_name: Mashrou3 Dactoor
+  publisher_display_name: Mashrou3 Dactoor
+  identity_name: com.mashrou3dactoor.player
   msix_version: 1.0.0.0
   capabilities: internetClient
   install_certificate: false
+
+flutter_launcher_icons:
+  ios: true
+  image_path: "assets/icon/icon.png"
 
 flutter:
   uses-material-design: true
   assets:
     - assets/fonts/NotoNaskhArabic-Regular.ttf
     - assets/fonts/NotoNaskhArabic-Bold.ttf
+    - assets/icon/icon.png

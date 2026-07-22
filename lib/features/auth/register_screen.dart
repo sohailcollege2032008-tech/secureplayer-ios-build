@@ -1,7 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/constants/app_links.dart';
 import '../../core/services/firestore_rest.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -22,6 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _errorMessage;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  bool _agreedToPrivacyPolicy = false;
 
   @override
   void dispose() {
@@ -35,6 +39,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_agreedToPrivacyPolicy) {
+      setState(() => _errorMessage = 'Please agree to the Privacy Policy to continue.');
+      return;
+    }
     setState(() {
       _loading = true;
       _errorMessage = null;
@@ -285,6 +293,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Checkbox(
+                      value: _agreedToPrivacyPolicy,
+                      onChanged: (v) =>
+                          setState(() => _agreedToPrivacyPolicy = v ?? false),
+                      activeColor: const Color(0xFF6C63FF),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(
+                            () => _agreedToPrivacyPolicy = !_agreedToPrivacyPolicy),
+                        child: RichText(
+                          text: TextSpan(
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.65),
+                              fontSize: 13,
+                            ),
+                            children: [
+                              const TextSpan(text: 'I agree to the '),
+                              TextSpan(
+                                text: 'Privacy Policy',
+                                style: const TextStyle(
+                                  color: Color(0xFF6C63FF),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () => launchUrl(
+                                        Uri.parse(kPrivacyPolicyUrl),
+                                        mode: LaunchMode.externalApplication,
+                                      ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 if (_errorMessage != null) ...[
                   const SizedBox(height: 16),

@@ -1,8 +1,13 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../../core/constants/app_links.dart';
+import '../../features/quiz/quiz_history_service.dart';
+import '../../security_layer/secure_storage/secure_storage_service.dart';
 
 
 class AppDrawer extends ConsumerWidget {
@@ -111,6 +116,15 @@ class AppDrawer extends ConsumerWidget {
                 FirebaseAuth.instance.signOut();
               },
             ),
+            _DrawerTile(
+              icon: Icons.delete_forever_rounded,
+              label: 'Delete Account',
+              color: Colors.redAccent.withValues(alpha: 0.7),
+              onTap: () {
+                Navigator.of(context).pop();
+                _confirmAndDeleteAccount(context, ref);
+              },
+            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -203,6 +217,67 @@ Future<void> _launchUrl(String urlString) async {
   }
 }
 
+Future<void> _confirmAndDeleteAccount(BuildContext context, WidgetRef ref) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: const Color(0xFF1A1A2E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text(
+        'Delete Account',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
+      content: const Text(
+        'This permanently deletes your account, enrollments, and all '
+        'locally downloaded course data. This cannot be undone.',
+        style: TextStyle(color: Colors.white70),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+  if (!context.mounted) return;
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) =>
+        const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF))),
+  );
+
+  try {
+    await FirebaseFunctions.instanceFor(region: 'us-central1')
+        .httpsCallable('deleteMyAccount')
+        .call();
+    await ref.read(quizHistoryServiceProvider).clearAll();
+    await SecureStorageService().deleteAll();
+  } catch (e) {
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop(); // close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete account: $e')),
+      );
+    }
+    return;
+  }
+
+  if (context.mounted) {
+    Navigator.of(context, rootNavigator: true).pop(); // close loading dialog
+  }
+  // Router redirects to /login automatically once this completes, same as
+  // the plain Sign Out tile above.
+  await FirebaseAuth.instance.signOut();
+}
+
 void _showAboutDialog(BuildContext context) {
   showDialog(
     context: context,
@@ -265,7 +340,9 @@ void _showAboutDialog(BuildContext context) {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'This platform helps course creators and teachers host their educational courses in a secure, protected environment. At the same time, it provides students with an engaging and interactive learning experience through interactive quizzes and materials available anywhere, even offline.',
+                  'هذا التطبيق تابع لقناة مشروع ضاكتور — القناة الأكبر فى الوطن '
+                  'العربي لتقديم المحتوى الطبي بنظام الطب الجديد بأسلوب مختلف '
+                  'وبسيط.',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
@@ -274,7 +351,7 @@ void _showAboutDialog(BuildContext context) {
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Developer & Support',
+                  'Channel & Contact',
                   style: TextStyle(
                     color: Color(0xFF9C94FF),
                     fontSize: 13,
@@ -300,7 +377,7 @@ void _showAboutDialog(BuildContext context) {
                           color: const Color(0xFF6C63FF).withValues(alpha: 0.2),
                         ),
                         child: const Icon(
-                          Icons.school_rounded,
+                          Icons.medical_services_rounded,
                           color: Color(0xFF6C63FF),
                           size: 22,
                         ),
@@ -311,7 +388,7 @@ void _showAboutDialog(BuildContext context) {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Dr. Sohail Ahmed',
+                              'مشروع ضاكتور',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -320,7 +397,7 @@ void _showAboutDialog(BuildContext context) {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Developer & Creator',
+                              'Medical Education Channel',
                               style: TextStyle(
                                 color: Colors.white38,
                                 fontSize: 12,
@@ -340,7 +417,7 @@ void _showAboutDialog(BuildContext context) {
                         icon: Icons.send_rounded, // paper plane for Telegram
                         label: 'Telegram',
                         color: const Color(0xFF26A5E4),
-                        onTap: () => _launchUrl('https://t.me/DrSohail_ahmed'),
+                        onTap: () => _launchUrl('https://t.me/Mashrou3_Dactoor'),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -349,14 +426,16 @@ void _showAboutDialog(BuildContext context) {
                         icon: Icons.facebook_rounded,
                         label: 'Facebook',
                         color: const Color(0xFF1877F2),
-                        onTap: () => _launchUrl('https://www.facebook.com/sohailsooo'),
+                        onTap: () =>
+                            _launchUrl('https://www.facebook.com/mashrou3.dactoor'),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 GestureDetector(
-                  onTap: () => _launchUrl('mailto:sohailcollege2032008@gmail.com'),
+                  onTap: () => _launchUrl(
+                      'https://www.youtube.com/channel/UC89lLeXzeTB4NncbXZZsGUQ'),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
@@ -367,10 +446,38 @@ void _showAboutDialog(BuildContext context) {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.email_outlined, color: Colors.white70, size: 16),
+                        Icon(Icons.play_circle_fill_rounded,
+                            color: Color(0xFFFF0000), size: 16),
                         SizedBox(width: 8),
                         Text(
-                          'sohailcollege2032008@gmail.com',
+                          'YouTube',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => _launchUrl(kPrivacyPolicyUrl),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.privacy_tip_outlined, color: Colors.white70, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'Privacy Policy',
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
