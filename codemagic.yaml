@@ -77,9 +77,15 @@ workflows:
       # invocation itself cleanly for this target. --release is NOT an
       # option here: "Release mode is not supported for simulators" — the
       # Simulator only runs Debug/Profile JIT-compiled Dart, never AOT.
+      # SKIP_DEVICE_CHECK: cloud simulator sessions (Codemagic App Preview,
+      # Appetize, etc.) don't reliably persist Keychain storage between
+      # sessions, so the device-binding UUID can regenerate on every
+      # relaunch — making the one-device-per-account check permanently
+      # unwinnable in this environment specifically. Screenshot/test build
+      # only — never set on a real release build.
       - name: Flutter build (Simulator target)
         script: |
-          flutter build ios --simulator --debug
+          flutter build ios --simulator --debug --dart-define=SKIP_DEVICE_CHECK=true
 
       # Appetize.io/LambdaTest/BrowserStack expect a plain .zip containing
       # the .app bundle directly — not the Payload/ .ipa structure real

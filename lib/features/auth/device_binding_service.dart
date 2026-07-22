@@ -3,7 +3,18 @@ import '../../core/services/firestore_rest.dart';
 import '../../core/utils/device_id_util.dart';
 
 class DeviceBindingService {
+  // TEMPORARY, test-build only — ephemeral cloud simulators (Codemagic App
+  // Preview, Appetize, etc.) don't reliably persist Keychain storage between
+  // sessions, so DeviceIdUtil.getDeviceId() can mint a fresh random ID every
+  // time the simulator restarts. That makes device-binding permanently
+  // unwinnable there: every relaunch looks like "a new device," no matter
+  // how many times the real device_id field gets reset server-side. Only
+  // ever set via --dart-define on a screenshot/test build — never in a real
+  // release build.
+  static const _skip = bool.fromEnvironment('SKIP_DEVICE_CHECK', defaultValue: false);
+
   Future<void> bindOrVerify(String uid) async {
+    if (_skip) return;
     final deviceId = await DeviceIdUtil.getDeviceId();
     final data = await FirestoreRest.instance.getDoc('students', uid);
 
