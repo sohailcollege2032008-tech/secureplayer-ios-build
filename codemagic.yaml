@@ -85,7 +85,7 @@ workflows:
       # only — never set on a real release build.
       - name: Flutter build (Simulator target)
         script: |
-          flutter build ios --simulator --debug --dart-define=SKIP_DEVICE_CHECK=true
+          flutter build ios --simulator --debug --dart-define=SKIP_DEVICE_CHECK=true --dart-define=AUTO_IMPORT_DEMO=true
 
       # Appetize.io/LambdaTest/BrowserStack expect a plain .zip containing
       # the .app bundle directly — not the Payload/ .ipa structure real

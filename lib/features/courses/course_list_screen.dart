@@ -1,10 +1,12 @@
-import 'dart:io' show Platform;
+import 'dart:io' show File, Platform;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/version_info.dart';
@@ -30,6 +32,14 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
   ProviderSubscription<String?>? _intentSub;
   bool _isRefreshing = false;
 
+  // TEMPORARY, screenshot-build only — auto-imports assets/demo/demo_course.sec
+  // on first launch so a cloud Simulator session (which has no way to get a
+  // real .sec file onto the device — no Files app access at all through
+  // Codemagic App Preview) still shows real enrolled-course content for App
+  // Store screenshots. Never set on a real release build.
+  static const _autoImportDemo =
+      bool.fromEnvironment('AUTO_IMPORT_DEMO', defaultValue: false);
+
   @override
   void initState() {
     super.initState();
@@ -44,7 +54,23 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
         },
         fireImmediately: true,
       );
+      if (_autoImportDemo) _importBundledDemoIfNeeded();
     });
+  }
+
+  Future<void> _importBundledDemoIfNeeded() async {
+    try {
+      final bytes = await rootBundle.load('assets/demo/demo_course.sec');
+      final tmpDir = await getTemporaryDirectory();
+      final demoFile = File('${tmpDir.path}/demo_course.sec');
+      await demoFile.writeAsBytes(bytes.buffer.asUint8List());
+      await ref.read(secImporterProvider).importFromPath(demoFile.path);
+      if (mounted) ref.invalidate(enrolledCoursesProvider);
+    } catch (_) {
+      // Best-effort: if it's already imported (or the demo enrollment isn't
+      // set up on whatever Firebase account this build is signed into),
+      // just fall through to the normal empty/enrolled course list.
+    }
   }
 
   @override
