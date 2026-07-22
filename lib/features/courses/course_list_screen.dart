@@ -425,15 +425,6 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'developed by Dr. Sohail Ahmed',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
                   // Shows exactly which git commit this build is from, so a
                   // stale install is visible at a glance instead of assumed
                   // to be current (an "+dirty" suffix means uncommitted

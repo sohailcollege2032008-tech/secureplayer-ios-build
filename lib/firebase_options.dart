@@ -21,7 +21,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAlx6lPaXPd3qRxgxhqkXxp68WYskodQ0E',
-    appId: '1:312422331227:android:6b95783d3a6d81c749e07e',
+    appId: '1:312422331227:android:2a8da734546d6bc149e07e',
     messagingSenderId: '312422331227',
     projectId: 'stud-future-platform-db',
     storageBucket: 'stud-future-platform-db.firebasestorage.app',
@@ -29,11 +29,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBgIMJLNUmnUaWO-apL4KHpuiScj07i3e0',
-    appId: '1:312422331227:ios:f43224410040837f49e07e',
+    appId: '1:312422331227:ios:f194408a2d4cac3b49e07e',
     messagingSenderId: '312422331227',
     projectId: 'stud-future-platform-db',
     storageBucket: 'stud-future-platform-db.firebasestorage.app',
-    iosBundleId: 'com.secureplayer.securePlayer',
+    iosBundleId: 'com.mashrou3dactoor.player',
   );
 
   // Registered as "teacher_studio (windows)" web app in Firebase Console

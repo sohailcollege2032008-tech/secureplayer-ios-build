@@ -265,7 +265,9 @@ void _showAboutDialog(BuildContext context) {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'This platform helps course creators and teachers host their educational courses in a secure, protected environment. At the same time, it provides students with an engaging and interactive learning experience through interactive quizzes and materials available anywhere, even offline.',
+                  'هذا التطبيق تابع لقناة مشروع ضاكتور — القناة الأكبر فى الوطن '
+                  'العربي لتقديم المحتوى الطبي بنظام الطب الجديد بأسلوب مختلف '
+                  'وبسيط.',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
@@ -274,7 +276,7 @@ void _showAboutDialog(BuildContext context) {
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Developer & Support',
+                  'Channel & Contact',
                   style: TextStyle(
                     color: Color(0xFF9C94FF),
                     fontSize: 13,
@@ -300,7 +302,7 @@ void _showAboutDialog(BuildContext context) {
                           color: const Color(0xFF6C63FF).withValues(alpha: 0.2),
                         ),
                         child: const Icon(
-                          Icons.school_rounded,
+                          Icons.medical_services_rounded,
                           color: Color(0xFF6C63FF),
                           size: 22,
                         ),
@@ -311,7 +313,7 @@ void _showAboutDialog(BuildContext context) {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Dr. Sohail Ahmed',
+                              'مشروع ضاكتور',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -320,7 +322,7 @@ void _showAboutDialog(BuildContext context) {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Developer & Creator',
+                              'Medical Education Channel',
                               style: TextStyle(
                                 color: Colors.white38,
                                 fontSize: 12,
@@ -340,7 +342,7 @@ void _showAboutDialog(BuildContext context) {
                         icon: Icons.send_rounded, // paper plane for Telegram
                         label: 'Telegram',
                         color: const Color(0xFF26A5E4),
-                        onTap: () => _launchUrl('https://t.me/DrSohail_ahmed'),
+                        onTap: () => _launchUrl('https://t.me/Mashrou3_Dactoor'),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -349,14 +351,16 @@ void _showAboutDialog(BuildContext context) {
                         icon: Icons.facebook_rounded,
                         label: 'Facebook',
                         color: const Color(0xFF1877F2),
-                        onTap: () => _launchUrl('https://www.facebook.com/sohailsooo'),
+                        onTap: () =>
+                            _launchUrl('https://www.facebook.com/mashrou3.dactoor'),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 GestureDetector(
-                  onTap: () => _launchUrl('mailto:sohailcollege2032008@gmail.com'),
+                  onTap: () => _launchUrl(
+                      'https://www.youtube.com/channel/UC89lLeXzeTB4NncbXZZsGUQ'),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
@@ -367,10 +371,11 @@ void _showAboutDialog(BuildContext context) {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.email_outlined, color: Colors.white70, size: 16),
+                        Icon(Icons.play_circle_fill_rounded,
+                            color: Color(0xFFFF0000), size: 16),
                         SizedBox(width: 8),
                         Text(
-                          'sohailcollege2032008@gmail.com',
+                          'YouTube',
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
