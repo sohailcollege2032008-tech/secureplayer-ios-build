@@ -3,4 +3,4 @@
 /// Mashrou3 Dactoor fork) so registration and the About dialog link to the
 /// correct brand's policy instead of SecurePlayer's.
 const kPrivacyPolicyUrl =
-    'https://dashboard-jet-seven-11.vercel.app/privacy/mashrou3-dactoor';
+    'https://mashrou3-dactoor.vercel.app/privacy';
