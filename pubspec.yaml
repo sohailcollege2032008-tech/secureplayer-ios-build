@@ -105,3 +105,4 @@ flutter:
     - assets/fonts/NotoNaskhArabic-Regular.ttf
     - assets/fonts/NotoNaskhArabic-Bold.ttf
     - assets/icon/icon.png
+    - assets/demo/demo_course.sec

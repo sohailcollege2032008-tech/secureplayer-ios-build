@@ -1,10 +1,12 @@
-import 'dart:io' show Platform;
+import 'dart:io' show File, Platform;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/version_info.dart';
@@ -30,6 +32,16 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
   ProviderSubscription<String?>? _intentSub;
   bool _isRefreshing = false;
 
+  // Apple App Review has no way to receive a real .sec file (no Telegram
+  // account, no teacher relationship) — this lets the one dedicated review
+  // account skip straight to real enrolled-course content, the same way a
+  // real student would after importing. Gated on the signed-in account's
+  // email, not a build flag, so it can never affect a real customer's
+  // session and ships in the same binary submitted to Apple — no
+  // SKIP_DEVICE_CHECK or other security bypass involved; this account's
+  // device still binds normally on first login.
+  static const _reviewerDemoEmail = 'screenshot.demo@mashrou3dactoor.test';
+
   @override
   void initState() {
     super.initState();
@@ -44,7 +56,40 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
         },
         fireImmediately: true,
       );
+      if (FirebaseAuth.instance.currentUser?.email == _reviewerDemoEmail) {
+        _autoImportReviewerDemoIfNeeded();
+      }
     });
+  }
+
+  // Matches courseLecturesProvider's own isImported check
+  // (enrolled_courses_provider.dart) — the demo .sec's fixed lecture_id.
+  static const _reviewerDemoLectureId = 'demo_screenshot_lecture_001';
+
+  Future<void> _autoImportReviewerDemoIfNeeded() async {
+    try {
+      final appDir = await getApplicationSupportDirectory();
+      final metaFile = File(
+          '${appDir.path}/courses/$_reviewerDemoLectureId/metadata.json');
+      if (await metaFile.exists()) return;
+
+      final bytes = await rootBundle.load('assets/demo/demo_course.sec');
+      final tmpDir = await getTemporaryDirectory();
+      final demoFile = File('${tmpDir.path}/demo_course.sec');
+      // ByteData.buffer is the underlying buffer, not guaranteed to start
+      // at this ByteData's own offset — asUint8List() without explicit
+      // bounds can silently read the wrong slice.
+      await demoFile.writeAsBytes(
+        bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
+      );
+      await ref.read(secImporterProvider).importFromPath(demoFile.path);
+      if (mounted) ref.invalidate(enrolledCoursesProvider);
+    } catch (_) {
+      // Silent on purpose: nobody is watching logs during Apple's review.
+      // On failure the reviewer just sees the course as enrolled-but-not-
+      // imported, same as any real student, and can still use the normal
+      // manual Import button as a fallback.
+    }
   }
 
   @override
