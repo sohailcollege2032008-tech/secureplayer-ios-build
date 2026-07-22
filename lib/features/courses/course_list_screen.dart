@@ -63,13 +63,24 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
       final bytes = await rootBundle.load('assets/demo/demo_course.sec');
       final tmpDir = await getTemporaryDirectory();
       final demoFile = File('${tmpDir.path}/demo_course.sec');
-      await demoFile.writeAsBytes(bytes.buffer.asUint8List());
+      // ByteData.buffer is the underlying buffer, which is NOT guaranteed to
+      // start at this ByteData's own offset — asUint8List() without bounds
+      // silently reads the wrong slice (or wrong length) on some platforms.
+      // Must pass offsetInBytes/lengthInBytes explicitly.
+      await demoFile.writeAsBytes(
+        bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
+      );
       await ref.read(secImporterProvider).importFromPath(demoFile.path);
       if (mounted) ref.invalidate(enrolledCoursesProvider);
-    } catch (_) {
-      // Best-effort: if it's already imported (or the demo enrollment isn't
-      // set up on whatever Firebase account this build is signed into),
-      // just fall through to the normal empty/enrolled course list.
+    } catch (e) {
+      // Test-build only: surface the real error instead of silently
+      // swallowing it — a previous silent failure here left the lecture
+      // permanently "locked" with no way to tell why.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Demo import failed: $e')),
+        );
+      }
     }
   }
 
