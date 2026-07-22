@@ -105,6 +105,14 @@ class AppDrawer extends ConsumerWidget {
                 _showAboutDialog(context);
               },
             ),
+            _DrawerTile(
+              icon: Icons.code_rounded,
+              label: 'App Info',
+              onTap: () {
+                Navigator.of(context).pop();
+                _showAppInfoDialog(context);
+              },
+            ),
             const Spacer(),
             const Divider(color: Colors.white12, height: 1),
             _DrawerTile(
@@ -487,6 +495,176 @@ void _showAboutDialog(BuildContext context) {
                       ],
                     ),
                   ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+void _showAppInfoDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (ctx) {
+      return Dialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6C63FF).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.code_rounded,
+                            color: Color(0xFF6C63FF),
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'App Info',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Built On',
+                  style: TextStyle(
+                    color: Color(0xFF9C94FF),
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'This app runs on SecurePlayer — a secure, offline-first video learning platform with device-bound content protection, offline playback, and interactive quizzes.',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Developer',
+                  style: TextStyle(
+                    color: Color(0xFF9C94FF),
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D0D0D),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF6C63FF).withValues(alpha: 0.2),
+                        ),
+                        child: const Icon(
+                          Icons.school_rounded,
+                          color: Color(0xFF6C63FF),
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Dr. Sohail Ahmed',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Platform Developer',
+                              style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Want a similar app built for your own courses or business?',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ContactCard(
+                        icon: Icons.send_rounded,
+                        label: 'Telegram',
+                        color: const Color(0xFF26A5E4),
+                        onTap: () => _launchUrl('https://t.me/DrSohail_ahmed'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ContactCard(
+                        icon: Icons.email_outlined,
+                        label: 'Email',
+                        color: const Color(0xFF9C94FF),
+                        onTap: () =>
+                            _launchUrl('mailto:sohailcollege2032008@gmail.com'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
