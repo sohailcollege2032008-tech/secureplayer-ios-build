@@ -59,7 +59,7 @@ workflows:
         - push
 
   ios-simulator-build:
-    name: iOS Simulator build (for Appetize.io/LambdaTest/BrowserStack)
+    name: iOS Simulator build (for Appetize.io/LambdaTest/BrowserStack + Codemagic App Preview)
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
@@ -90,6 +90,11 @@ workflows:
           zip -r secure_player_simulator.zip Runner.app
     artifacts:
       - build/ios/iphonesimulator/secure_player_simulator.zip
+      # Codemagic's own App Preview ("Quick Launch" in-browser simulator)
+      # needs the raw, unzipped .app bundle declared directly here — it
+      # doesn't unzip artifacts itself. The zip above stays for external
+      # services (Appetize/BrowserStack) which want it pre-zipped.
+      - build/ios/iphonesimulator/Runner.app
     triggering:
       events:
         - push
@@ -125,6 +130,7 @@ workflows:
           zip -r secure_player_simulator_debugflag.zip Runner.app
     artifacts:
       - build/ios/iphonesimulator/secure_player_simulator_debugflag.zip
+      - build/ios/iphonesimulator/Runner.app
     triggering:
       events:
         - push
