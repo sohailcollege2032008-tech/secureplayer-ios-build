@@ -1,7 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/constants/app_links.dart';
 import '../../core/services/firestore_rest.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -22,6 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _errorMessage;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  bool _agreedToPrivacyPolicy = false;
 
   @override
   void dispose() {
@@ -35,6 +39,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_agreedToPrivacyPolicy) {
+      setState(() => _errorMessage = 'Please agree to the Privacy Policy to continue.');
+      return;
+    }
     setState(() {
       _loading = true;
       _errorMessage = null;
@@ -48,24 +56,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       try {
-        await FirestoreRest.instance.setDoc(
-          'students',
-          credential.user!.uid,
-          {
-            'name': _nameController.text.trim(),
-            'email': _emailController.text.trim().toLowerCase(),
-            'phone': _phoneController.text.trim(),
-            'device_id': null,
-            'device_registered_at': null,
-            'device_reset_at': null,
-          },
-        );
+        // Retries before giving up: a transient network blip here previously
+        // left a permanent "zombie" account — Auth user created, but no
+        // students/{uid} doc ever written, and re-registering the same
+        // email is impossible since Firebase Auth already considers it
+        // taken. Confirmed in production (an account created 2026-07-05
+        // still had no profile doc as of 2026-07-14). Worth a few retries
+        // before falling back to the destructive rollback path.
+        Object? lastError;
+        var wrote = false;
+        for (var attempt = 1; attempt <= 3 && !wrote; attempt++) {
+          try {
+            await FirestoreRest.instance.setDoc(
+              'students',
+              credential.user!.uid,
+              {
+                'name': _nameController.text.trim(),
+                'email': _emailController.text.trim().toLowerCase(),
+                'phone': _phoneController.text.trim(),
+                'device_id': null,
+                'device_registered_at': null,
+                'device_reset_at': null,
+              },
+            );
+            wrote = true;
+          } catch (e) {
+            lastError = e;
+            if (attempt < 3) {
+              await Future.delayed(Duration(milliseconds: 500 * attempt));
+            }
+          }
+        }
+        if (!wrote) throw lastError!;
         // Both Auth + Firestore succeeded — show next-steps guidance
         if (mounted) _showEnrollmentGuide(_emailController.text.trim());
       } catch (_) {
-        // Firestore write failed — delete auth user so the account is clean
-        // and the user can retry with the same email.
-        await credential.user!.delete();
+        // All retries failed — delete the auth user so the account doesn't
+        // become an unrecoverable zombie (existing in Auth with no profile,
+        // blocking the same email from ever registering again). If this
+        // delete itself fails (same underlying connectivity problem), don't
+        // let that mask the original error with a new one.
+        try {
+          await credential.user!.delete();
+        } catch (_) {}
         rethrow;
       }
     } on FirebaseAuthException catch (e) {
@@ -285,6 +318,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Checkbox(
+                      value: _agreedToPrivacyPolicy,
+                      onChanged: (v) =>
+                          setState(() => _agreedToPrivacyPolicy = v ?? false),
+                      activeColor: const Color(0xFF6C63FF),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(
+                            () => _agreedToPrivacyPolicy = !_agreedToPrivacyPolicy),
+                        child: RichText(
+                          text: TextSpan(
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.65),
+                              fontSize: 13,
+                            ),
+                            children: [
+                              const TextSpan(text: 'I agree to the '),
+                              TextSpan(
+                                text: 'Privacy Policy',
+                                style: const TextStyle(
+                                  color: Color(0xFF6C63FF),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () => launchUrl(
+                                        Uri.parse(kPrivacyPolicyUrl),
+                                        mode: LaunchMode.externalApplication,
+                                      ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 if (_errorMessage != null) ...[
                   const SizedBox(height: 16),
