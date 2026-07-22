@@ -20,9 +20,14 @@ workflows:
       # own exit code is ignored; the actual unsigned build happens in the
       # next step via a direct xcodebuild invocation, which is the
       # documented, reliable way to get a real-device unsigned build.
+      # AUTO_IMPORT_DEMO: bundled demo course, same reasoning as the
+      # Simulator workflow — BrowserStack's real-device remote control may
+      # not expose file-transfer either, so ship the content instead of
+      # relying on it. SKIP_DEVICE_CHECK is included too since it's harmless
+      # here (this .ipa is a throwaway test build, never the real release).
       - name: Flutter prepare (Dart AOT + plugin embedding)
         script: |
-          flutter build ios --release --no-codesign || true
+          flutter build ios --release --no-codesign --dart-define=AUTO_IMPORT_DEMO=true --dart-define=SKIP_DEVICE_CHECK=true || true
 
       # No Apple Developer account involved at all. Sideloadly does the
       # actual signing later using whoever's own free Apple ID installs the
