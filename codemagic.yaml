@@ -94,6 +94,63 @@ workflows:
       events:
         - push
 
+  ios-app-store-release:
+    name: iOS App Store Release (signed, submits for review)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    # This name must match an "Apple Developer Portal" integration created
+    # under Codemagic Team settings > Integrations, using an App Store
+    # Connect API key (Issuer ID + Key ID + .p8 file) generated in App Store
+    # Connect > Users and Access > Integrations > Team Keys. That key must
+    # belong to an active, paid Apple Developer Program membership — whoever
+    # owns that membership creates the integration in their own Codemagic
+    # team and renames it here to match (or renames "mashrou3_asc" itself).
+    integrations:
+      app_store_connect: mashrou3_asc
+    environment:
+      flutter: 3.41.9
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.mashrou3dactoor.player
+      vars:
+        # Numeric Apple ID of the App Store Connect app record — only exists
+        # after creating the app once in App Store Connect (My Apps > "+" >
+        # New App, bundle ID com.mashrou3dactoor.player). Copy it from the
+        # app's "General > App Information" page and paste it here.
+        APP_STORE_APPLE_ID: 0000000000
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios && pod install
+      # Codemagic fetches/creates the App Store distribution certificate +
+      # provisioning profile via the app_store_connect integration above,
+      # then writes /Users/builder/export_options.plist for the build step.
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      - name: Flutter build ipa and code sign
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: true
+        # MANUAL keeps the final "Release" button in App Store Connect under
+        # manual control after Apple approves it — this workflow only gets
+        # it to "Pending Developer Release", it doesn't auto-publish to
+        # the live App Store the moment review passes.
+        release_type: MANUAL
+      email:
+        recipients:
+          - sohailcollege2032008@gmail.com
+
   ios-simulator-debug-flag-build:
     name: iOS Simulator build with debug security flag (for streaming-based test platforms)
     max_build_duration: 60
