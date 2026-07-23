@@ -89,7 +89,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'SecurePlayer',
+                  'Mashrou3 Dactoor',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 28,
