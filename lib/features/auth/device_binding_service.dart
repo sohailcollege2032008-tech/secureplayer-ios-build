@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../core/errors/app_exception.dart';
 import '../../core/services/firestore_rest.dart';
 import '../../core/utils/device_id_util.dart';
@@ -13,8 +15,18 @@ class DeviceBindingService {
   // release build.
   static const _skip = bool.fromEnvironment('SKIP_DEVICE_CHECK', defaultValue: false);
 
+  // Permanent, one-account QA exemption — unlike _skip above (a build flag
+  // that would affect every real user of a build compiled with it), this is
+  // gated on the signed-in account's own identity. It ships safely in the
+  // exact same binary real customers use: nobody else's email can match, so
+  // it can never exempt a real customer's device from binding. Never write
+  // device_id for this account either, so it stays permanently re-bindable
+  // to whatever device is testing on it, no matter how many devices that is.
+  static const _qaTestEmail = 'qa.test@mashrou3dactoor.test';
+
   Future<void> bindOrVerify(String uid) async {
     if (_skip) return;
+    if (FirebaseAuth.instance.currentUser?.email == _qaTestEmail) return;
     final deviceId = await DeviceIdUtil.getDeviceId();
     final data = await FirestoreRest.instance.getDoc('students', uid);
 
