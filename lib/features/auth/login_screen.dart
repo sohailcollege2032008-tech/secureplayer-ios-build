@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,7 +18,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _loading = false;
   String? _errorMessage;
+  // Distinguishes the shared message box's styling below -- a password
+  // reset confirmation used to be a SnackBar only, easy to miss entirely
+  // right as the keyboard dismisses. Showing it in the same persistent box
+  // used for errors (just recolored) makes it impossible to miss.
+  bool _messageIsError = true;
   bool _obscurePassword = true;
+  bool _sendingReset = false;
+  // "Forgot password?" only appears once a sign-in attempt has actually
+  // failed on credentials -- surfaced exactly when it's relevant instead of
+  // cluttering the form permanently.
+  bool _showForgotPassword = false;
 
   @override
   void dispose() {
@@ -41,14 +52,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // Router's redirect handles navigation on auth state change
     } on FirebaseAuthException catch (e) {
       setState(() {
+        _messageIsError = true;
         _errorMessage = _friendlyError(e.code);
+        if (_isCredentialsError(e.code)) _showForgotPassword = true;
       });
     } catch (e) {
       setState(() {
+        _messageIsError = true;
         _errorMessage = 'An unexpected error occurred. Please try again.';
       });
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  bool _isCredentialsError(String code) {
+    switch (code) {
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+      case 'INVALID_LOGIN_CREDENTIALS':
+        return true;
+      default:
+        return false;
     }
   }
 
@@ -69,6 +95,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return 'This email is already registered. Try signing in.';
       default:
         return 'Sign in failed ($code). Please try again.';
+    }
+  }
+
+  Future<void> _sendPasswordReset() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() {
+        _messageIsError = true;
+        _errorMessage = 'Enter your email above first.';
+      });
+      return;
+    }
+
+    setState(() {
+      _sendingReset = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await FirebaseFunctions.instanceFor(region: 'us-central1')
+          .httpsCallable('checkEmailExists')
+          .call({'email': email});
+      final exists = result.data['exists'] as bool? ?? false;
+
+      if (!exists) {
+        setState(() {
+          _messageIsError = true;
+          _errorMessage = 'No account found with this email.';
+        });
+        return;
+      }
+
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      setState(() {
+        _messageIsError = false;
+        _errorMessage =
+            'Reset email sent to $email. It can take a minute to arrive -- '
+            'check your Spam/Junk folder if you don\'t see it.';
+      });
+    } catch (_) {
+      setState(() {
+        _messageIsError = true;
+        _errorMessage = 'Could not send reset email. Please try again.';
+      });
+    } finally {
+      if (mounted) setState(() => _sendingReset = false);
     }
   }
 
@@ -150,21 +222,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.12),
+                      color: (_messageIsError ? Colors.red : AppTheme.primary)
+                          .withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
-                      border:
-                          Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: (_messageIsError ? Colors.red : AppTheme.primary)
+                            .withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline,
-                            color: Colors.redAccent, size: 18),
+                        Icon(
+                          _messageIsError
+                              ? Icons.error_outline
+                              : Icons.check_circle_outline,
+                          color:
+                              _messageIsError ? Colors.redAccent : AppTheme.primary,
+                          size: 18,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             _errorMessage!,
-                            style: const TextStyle(
-                              color: Colors.redAccent,
+                            style: TextStyle(
+                              color: _messageIsError
+                                  ? Colors.redAccent
+                                  : AppTheme.primary,
                               fontSize: 13,
                             ),
                           ),
@@ -173,42 +256,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                 ],
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () async {
-                      final email = _emailController.text.trim();
-                      if (email.isEmpty || !email.contains('@')) {
-                        setState(() =>
-                            _errorMessage = 'Enter your email above first.');
-                        return;
-                      }
-                      try {
-                        final messenger = ScaffoldMessenger.of(context);
-                        await FirebaseAuth.instance
-                            .sendPasswordResetEmail(email: email);
-                        if (mounted) {
-                          setState(() => _errorMessage = null);
-                          messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text('Password reset email sent.'),
-                              backgroundColor: AppTheme.primary,
+                if (_showForgotPassword)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _sendingReset ? null : _sendPasswordReset,
+                      child: _sendingReset
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                color: AppTheme.primary,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              'Forgot password?',
+                              style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.55),
+                                  fontSize: 13),
                             ),
-                          );
-                        }
-                      } catch (_) {
-                        setState(() =>
-                            _errorMessage = 'Could not send reset email.');
-                      }
-                    },
-                    child: Text(
-                      'Forgot password?',
-                      style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.55),
-                          fontSize: 13),
                     ),
                   ),
-                ),
                 const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
