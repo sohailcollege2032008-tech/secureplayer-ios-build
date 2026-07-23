@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'quiz_history_service.dart';
+import '../../app/theme.dart';
 
 class MyQuizzesScreen extends ConsumerWidget {
   const MyQuizzesScreen({super.key});
@@ -11,9 +12,9 @@ class MyQuizzesScreen extends ConsumerWidget {
     final groupsAsync = ref.watch(groupedQuizAttemptsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         foregroundColor: Colors.white,
         title: const Text(
           'My Quizzes',
@@ -22,7 +23,7 @@ class MyQuizzesScreen extends ConsumerWidget {
       ),
       body: groupsAsync.when(
         loading: () =>
-            const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF))),
+            const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
         error: (e, _) => Center(
           child: Text(e.toString(),
               style: const TextStyle(color: Colors.white54)),
@@ -103,7 +104,7 @@ class _AttemptGroupCardState extends State<_AttemptGroupCard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -182,7 +183,7 @@ class _AttemptGroupCardState extends State<_AttemptGroupCard> {
                           Text(
                             'Attempted ${group.attemptCount} times',
                             style: const TextStyle(
-                              color: Color(0xFF9C95FF),
+                              color: AppTheme.secondaryAccent,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),

@@ -8,6 +8,7 @@ import '../../shared/widgets/question_image_block.dart';
 import 'quiz_provider.dart';
 import 'quiz_settings_provider.dart';
 import 'quiz_text_styles.dart';
+import '../../app/theme.dart';
 
 /// Renders one question: text (+ optional image), options, star-while-solving,
 /// and — once submitted — correct/incorrect feedback with explanation. Shared
@@ -146,8 +147,8 @@ class _OptionTile extends StatelessWidget {
         textColor = Colors.redAccent;
       }
     } else if (isSelected) {
-      bgColor = const Color(0xFF6C63FF).withValues(alpha: 0.15);
-      borderColor = const Color(0xFF6C63FF);
+      bgColor = AppTheme.primary.withValues(alpha: 0.15);
+      borderColor = AppTheme.primary;
       textColor = Colors.white;
     }
 

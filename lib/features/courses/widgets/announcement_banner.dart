@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/models/announcement_model.dart';
 import '../announcements_provider.dart';
+import '../../../app/theme.dart';
 
 class AnnouncementBannerList extends ConsumerWidget {
   const AnnouncementBannerList({super.key});
@@ -57,7 +58,7 @@ class AnnouncementCardState extends State<AnnouncementCard> {
   @override
   Widget build(BuildContext context) {
     const accent = Color(0xFFFFA726);
-    const cardBg = Color(0xFF1A1A2E);
+    const cardBg = AppTheme.surface;
     final body = widget.announcement.body;
 
     return Container(

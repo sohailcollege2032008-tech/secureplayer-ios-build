@@ -20,6 +20,7 @@ import 'enrolled_courses_provider.dart';
 import 'sec_file_intent_service.dart';
 import 'sec_importer.dart';
 import 'widgets/announcement_banner.dart';
+import '../../app/theme.dart';
 
 class CourseListScreen extends ConsumerStatefulWidget {
   const CourseListScreen({super.key});
@@ -173,7 +174,7 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
       context: context,
       isDismissible: false,
       enableDrag: false,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -243,7 +244,7 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
       context: context,
       isDismissible: false,
       enableDrag: false,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -312,7 +313,7 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
       context: context,
       isDismissible: false,
       enableDrag: false,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -338,13 +339,13 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
+            backgroundColor: AppTheme.surface,
             title: const Text('Lecture updated', style: TextStyle(color: Colors.white)),
             content: Text(description, style: const TextStyle(color: Colors.white70, height: 1.5)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('OK', style: TextStyle(color: Color(0xFF6C63FF))),
+                child: const Text('OK', style: TextStyle(color: AppTheme.primary)),
               ),
             ],
           ),
@@ -377,7 +378,7 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: AppTheme.surface,
         title: const Text(
           'Not Enrolled',
           style: TextStyle(color: Colors.white),
@@ -390,7 +391,7 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK', style: TextStyle(color: Color(0xFF6C63FF))),
+            child: const Text('OK', style: TextStyle(color: AppTheme.primary)),
           ),
         ],
       ),
@@ -402,10 +403,10 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
     final bindingState = ref.watch(deviceBindingProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       drawer: const AppDrawer(),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         elevation: 0,
         title: const Text(
           'My Courses',
@@ -504,8 +505,8 @@ class _EnrolledCoursesList extends ConsumerWidget {
           ref.refresh(activeAnnouncementsProvider.future),
         ]);
       },
-      color: const Color(0xFF6C63FF),
-      backgroundColor: const Color(0xFF1A1A2E),
+      color: AppTheme.primary,
+      backgroundColor: AppTheme.surface,
       child: coursesAsync.when(
         loading: () => ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -540,7 +541,7 @@ class _EnrolledCoursesList extends ConsumerWidget {
                         ref.invalidate(enrolledCoursesProvider);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6C63FF),
+                        backgroundColor: AppTheme.primary,
                         foregroundColor: Colors.white,
                       ),
                       child: const Text('Retry'),
@@ -601,7 +602,7 @@ class _CourseGridCard extends StatelessWidget {
   final VoidCallback onTap;
 
   static const _palette = [
-    [Color(0xFF6C63FF), Color(0xFF3B37CC)],
+    [AppTheme.primary, Color(0xFF3B37CC)],
     [Color(0xFF11998e), Color(0xFF38ef7d)],
     [Color(0xFFf7971e), Color(0xFFffd200)],
     [Color(0xFFc94b4b), Color(0xFF4b134f)],
@@ -641,7 +642,7 @@ class _CourseGridCard extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          color: const Color(0xFF1A1A2E),
+          color: AppTheme.surface,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -810,7 +811,7 @@ class _DeviceBlockedView extends ConsumerWidget {
                 ElevatedButton.icon(
                   onPressed: () => ref.invalidate(deviceBindingProvider),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
+                    backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 12),
@@ -881,7 +882,7 @@ class _ProfileMissingView extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onSignOut,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6C63FF),
+                backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -945,7 +946,7 @@ class _SessionExpiredView extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onSignOut,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6C63FF),
+                backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -1023,7 +1024,7 @@ class _ImportProgressSheet extends StatelessWidget {
               Row(
                 children: [
                   const Icon(Icons.download_rounded,
-                      color: Color(0xFF6C63FF), size: 28),
+                      color: AppTheme.primary, size: 28),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -1044,7 +1045,7 @@ class _ImportProgressSheet extends StatelessWidget {
                 value: p.progress,
                 backgroundColor: Colors.white12,
                 valueColor:
-                    const AlwaysStoppedAnimation<Color>(Color(0xFF6C63FF)),
+                    const AlwaysStoppedAnimation<Color>(AppTheme.primary),
                 minHeight: 6,
                 borderRadius: BorderRadius.circular(3),
               ),

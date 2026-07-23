@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/quiz_settings.dart';
 import 'quiz_settings_provider.dart';
+import '../../app/theme.dart';
 
-const _kPrimary = Color(0xFF6C63FF);
-const _kSurface = Color(0xFF1A1A2E);
+const _kPrimary = AppTheme.primary;
+const _kSurface = AppTheme.surface;
 
 /// Opens the quiz settings bottom sheet. Call from the settings icon in the
 /// quiz UI's top corner (quiz_screen.dart / quiz_modal.dart).

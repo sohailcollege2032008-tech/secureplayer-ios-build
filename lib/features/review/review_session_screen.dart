@@ -17,6 +17,7 @@ import 'review_providers.dart';
 import 'review_settings_provider.dart';
 import 'review_settings_screen.dart';
 import 'widgets/rating_bar.dart';
+import '../../app/theme.dart';
 
 /// A spaced-repetition review session over the selected lectures' due
 /// questions. Flow per question: answer -> feedback + explanation -> ALWAYS
@@ -269,9 +270,9 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         foregroundColor: Colors.white,
         title: const Text(
           'Review',
@@ -298,7 +299,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen>
       body: SecurityGuardGate(
         child: switch (_view) {
           _ViewState.loading => const Center(
-              child: CircularProgressIndicator(color: Color(0xFF6C63FF))),
+              child: CircularProgressIndicator(color: AppTheme.primary)),
           _ViewState.caughtUp => _buildCaughtUp(),
           _ViewState.session => _buildSession(),
           _ViewState.summary => _buildSummary(),
@@ -347,7 +348,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen>
                 icon: const Icon(Icons.fitness_center_rounded, size: 18),
                 label: const Text('Practice anyway'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6C63FF),
+                  backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.white,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -402,7 +403,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen>
           LinearProgressIndicator(
             value: (_index + 1) / _deck.length,
             backgroundColor: Colors.white12,
-            color: const Color(0xFF6C63FF),
+            color: AppTheme.primary,
             minHeight: 3,
           ),
           Expanded(
@@ -511,8 +512,8 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen>
           textColor = Colors.redAccent;
         }
       } else if (i == _selected) {
-        bgColor = const Color(0xFF6C63FF).withValues(alpha: 0.15);
-        borderColor = const Color(0xFF6C63FF);
+        bgColor = AppTheme.primary.withValues(alpha: 0.15);
+        borderColor = AppTheme.primary;
         textColor = Colors.white;
       }
 
@@ -623,7 +624,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen>
             ? null
             : () => setState(() => _submittedIndices.add(_index)),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF6C63FF),
+          backgroundColor: AppTheme.primary,
           foregroundColor: Colors.white,
           disabledBackgroundColor: Colors.white12,
           disabledForegroundColor: Colors.white38,
@@ -644,7 +645,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen>
     const ratingLabels = {
       ReviewRating.again: ('غلط', Colors.redAccent),
       ReviewRating.hard: ('صعب', Colors.orangeAccent),
-      ReviewRating.medium: ('متوسط', Color(0xFF6C63FF)),
+      ReviewRating.medium: ('متوسط', AppTheme.primary),
       ReviewRating.easy: ('سهل', Colors.greenAccent),
     };
 
@@ -655,7 +656,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.emoji_events_rounded,
-                color: Color(0xFF6C63FF), size: 72),
+                color: AppTheme.primary, size: 72),
             const SizedBox(height: 20),
             Text(
               'Session complete — ${_uniqueReviewed.length} question${_uniqueReviewed.length == 1 ? '' : 's'} reviewed',
@@ -702,7 +703,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen>
               child: ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6C63FF),
+                  backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(

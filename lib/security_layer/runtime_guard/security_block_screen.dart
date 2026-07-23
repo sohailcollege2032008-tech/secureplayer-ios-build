@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'security_guard_state.dart';
+import '../../app/theme.dart';
 
 /// Full-screen block shown when the runtime guard confirms a real
 /// violation. Deliberately has no exit/dismiss button — it only clears
@@ -17,7 +18,7 @@ class SecurityBlockScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final copy = _copyFor(reason);
     return ColoredBox(
-      color: const Color(0xFF0D0D0D),
+      color: AppTheme.background,
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),

@@ -8,10 +8,11 @@ import 'package:go_router/go_router.dart';
 import 'personal_quiz_draft_state.dart';
 import 'personal_quiz_generator.dart';
 import 'personal_quiz_json_import.dart';
+import '../../app/theme.dart';
 
-const _kBg = Color(0xFF0D0D0D);
-const _kCard = Color(0xFF1A1A2E);
-const _kAccent = Color(0xFF6C63FF);
+const _kBg = AppTheme.background;
+const _kCard = AppTheme.surface;
+const _kAccent = AppTheme.primary;
 
 /// Editor for one personal quiz draft — a near-port of Studio's
 /// `QuizBlockEditor`/`_QuestionEditorCard`

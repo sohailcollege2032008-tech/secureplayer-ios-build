@@ -18,6 +18,7 @@ import '../../security_layer/watermark/corner_watermark_painter.dart';
 import '../../security_layer/watermark/secure_pdf_view.dart';
 import '../../security_layer/watermark/tiled_watermark_painter.dart';
 import '../../shared/html_file_viewer.dart';
+import '../../app/theme.dart';
 
 class FileViewerScreen extends ConsumerStatefulWidget {
   const FileViewerScreen({
@@ -144,9 +145,9 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         foregroundColor: Colors.white,
         title: Text(
           widget.title.isNotEmpty ? widget.title : widget.filename,
@@ -172,7 +173,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen>
     final serverAsync = ref.watch(videoServerProvider(args));
     return serverAsync.when(
       loading: () => const Center(
-          child: CircularProgressIndicator(color: Color(0xFF6C63FF))),
+          child: CircularProgressIndicator(color: AppTheme.primary)),
       error: (e, _) => _errorView('Could not start secure server: $e'),
       data: (server) {
         final base = 'http://127.0.0.1:${server.port}'
@@ -186,7 +187,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen>
           if (_pdfDoc == null) {
             if (!_pdfLoading) _initPdf(base, server.sessionToken);
             content = const Center(
-              child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+              child: CircularProgressIndicator(color: AppTheme.primary),
             );
           } else {
             content = _buildPdfView();
@@ -257,7 +258,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen>
                   ? child
                   : const Center(
                       child:
-                          CircularProgressIndicator(color: Color(0xFF6C63FF))),
+                          CircularProgressIndicator(color: AppTheme.primary)),
               errorBuilder: (_, __, ___) => const Center(
                 child: Icon(Icons.broken_image_rounded,
                     color: Colors.white38, size: 64),

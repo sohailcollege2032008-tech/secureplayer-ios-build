@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import '../../app/theme.dart';
 
 /// Question text, optionally preceded by its image (fetched in-memory from
 /// the shelf server) with a loading placeholder while the image is still
@@ -55,7 +56,7 @@ class QuestionTextWithImage extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.04),
                     child: const Center(
                       child: CircularProgressIndicator(
-                          color: Color(0xFF6C63FF), strokeWidth: 2),
+                          color: AppTheme.primary, strokeWidth: 2),
                     ),
                   ),
           ),

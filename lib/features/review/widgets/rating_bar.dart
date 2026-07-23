@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/models/review_settings.dart';
 import '../../../core/services/srs_scheduler.dart';
+import '../../../app/theme.dart';
 
 /// The four SRS rating buttons shown after answering a review question.
 /// Always displays all four regardless of answer correctness (user decision).
@@ -54,7 +55,7 @@ class RatingBar extends StatelessWidget {
         _RatingButton(
           label: 'متوسط',
           subtitle: _predict(ReviewRating.medium),
-          color: const Color(0xFF6C63FF),
+          color: AppTheme.primary,
           onTap: () => onRate(ReviewRating.medium),
         ),
         const SizedBox(width: 8),

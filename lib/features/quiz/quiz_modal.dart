@@ -7,6 +7,7 @@ import 'quiz_provider.dart';
 import 'quiz_settings_provider.dart';
 import 'quiz_settings_screen.dart';
 import 'quiz_shuffle.dart';
+import '../../app/theme.dart';
 
 class QuizModal extends ConsumerStatefulWidget {
   const QuizModal({
@@ -117,7 +118,7 @@ class _QuizModalState extends ConsumerState<QuizModal> {
     return PopScope(
       canPop: true,
       child: Dialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: AppTheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: QuizNavGestureWrapper(
           enabled: ref.watch(quizSettingsProvider).swipeNavigationEnabled,
@@ -149,7 +150,7 @@ class _QuizModalState extends ConsumerState<QuizModal> {
   Widget _buildHeader() {
     return Row(
       children: [
-        const Icon(Icons.quiz_rounded, color: Color(0xFF6C63FF), size: 22),
+        const Icon(Icons.quiz_rounded, color: AppTheme.primary, size: 22),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
@@ -212,8 +213,8 @@ class _QuizModalState extends ConsumerState<QuizModal> {
           textColor = Colors.redAccent;
         }
       } else if (i == _selectedOption) {
-        bgColor = const Color(0xFF6C63FF).withValues(alpha: 0.15);
-        borderColor = const Color(0xFF6C63FF);
+        bgColor = AppTheme.primary.withValues(alpha: 0.15);
+        borderColor = AppTheme.primary;
         textColor = Colors.white;
       }
 
@@ -319,7 +320,7 @@ class _QuizModalState extends ConsumerState<QuizModal> {
       child: ElevatedButton(
         onPressed: _submitted ? _advanceOrReview : (canSubmit ? _submit : null),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF6C63FF),
+          backgroundColor: AppTheme.primary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(

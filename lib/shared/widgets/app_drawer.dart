@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_links.dart';
 import '../../features/quiz/quiz_history_service.dart';
 import '../../security_layer/secure_storage/secure_storage_service.dart';
+import '../../app/theme.dart';
 
 
 class AppDrawer extends ConsumerWidget {
@@ -18,7 +19,7 @@ class AppDrawer extends ConsumerWidget {
     final user = FirebaseAuth.instance.currentUser;
 
     return Drawer(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -32,11 +33,11 @@ class AppDrawer extends ConsumerWidget {
                     height: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFF6C63FF).withValues(alpha: 0.2),
+                      color: AppTheme.primary.withValues(alpha: 0.2),
                     ),
                     child: const Icon(
                       Icons.person_rounded,
-                      color: Color(0xFF6C63FF),
+                      color: AppTheme.primary,
                       size: 24,
                     ),
                   ),
@@ -229,7 +230,7 @@ Future<void> _confirmAndDeleteAccount(BuildContext context, WidgetRef ref) async
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text(
         'Delete Account',
@@ -259,7 +260,7 @@ Future<void> _confirmAndDeleteAccount(BuildContext context, WidgetRef ref) async
     context: context,
     barrierDismissible: false,
     builder: (_) =>
-        const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF))),
+        const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
   );
 
   try {
@@ -291,7 +292,7 @@ void _showAboutDialog(BuildContext context) {
     context: context,
     builder: (ctx) {
       return Dialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: AppTheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: SingleChildScrollView(
           child: Padding(
@@ -308,12 +309,12 @@ void _showAboutDialog(BuildContext context) {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF6C63FF).withValues(alpha: 0.15),
+                            color: AppTheme.primary.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
                             Icons.info_outline_rounded,
-                            color: Color(0xFF6C63FF),
+                            color: AppTheme.primary,
                             size: 20,
                           ),
                         ),
@@ -340,7 +341,7 @@ void _showAboutDialog(BuildContext context) {
                 const Text(
                   'Goal & Purpose',
                   style: TextStyle(
-                    color: Color(0xFF9C94FF),
+                    color: AppTheme.secondaryAccent,
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
@@ -361,7 +362,7 @@ void _showAboutDialog(BuildContext context) {
                 const Text(
                   'Channel & Contact',
                   style: TextStyle(
-                    color: Color(0xFF9C94FF),
+                    color: AppTheme.secondaryAccent,
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
@@ -371,7 +372,7 @@ void _showAboutDialog(BuildContext context) {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0D0D0D),
+                    color: AppTheme.background,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                   ),
@@ -382,11 +383,11 @@ void _showAboutDialog(BuildContext context) {
                         height: 44,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF6C63FF).withValues(alpha: 0.2),
+                          color: AppTheme.primary.withValues(alpha: 0.2),
                         ),
                         child: const Icon(
                           Icons.medical_services_rounded,
-                          color: Color(0xFF6C63FF),
+                          color: AppTheme.primary,
                           size: 22,
                         ),
                       ),
@@ -510,7 +511,7 @@ void _showAppInfoDialog(BuildContext context) {
     context: context,
     builder: (ctx) {
       return Dialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: AppTheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: SingleChildScrollView(
           child: Padding(
@@ -527,12 +528,12 @@ void _showAppInfoDialog(BuildContext context) {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF6C63FF).withValues(alpha: 0.15),
+                            color: AppTheme.primary.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
                             Icons.code_rounded,
-                            color: Color(0xFF6C63FF),
+                            color: AppTheme.primary,
                             size: 20,
                           ),
                         ),
@@ -559,7 +560,7 @@ void _showAppInfoDialog(BuildContext context) {
                 const Text(
                   'Built On',
                   style: TextStyle(
-                    color: Color(0xFF9C94FF),
+                    color: AppTheme.secondaryAccent,
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
@@ -578,7 +579,7 @@ void _showAppInfoDialog(BuildContext context) {
                 const Text(
                   'Developer',
                   style: TextStyle(
-                    color: Color(0xFF9C94FF),
+                    color: AppTheme.secondaryAccent,
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
@@ -588,7 +589,7 @@ void _showAppInfoDialog(BuildContext context) {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0D0D0D),
+                    color: AppTheme.background,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                   ),
@@ -599,11 +600,11 @@ void _showAppInfoDialog(BuildContext context) {
                         height: 44,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF6C63FF).withValues(alpha: 0.2),
+                          color: AppTheme.primary.withValues(alpha: 0.2),
                         ),
                         child: const Icon(
                           Icons.school_rounded,
-                          color: Color(0xFF6C63FF),
+                          color: AppTheme.primary,
                           size: 22,
                         ),
                       ),
@@ -650,7 +651,7 @@ void _showAppInfoDialog(BuildContext context) {
                       child: _ContactCard(
                         icon: Icons.email_outlined,
                         label: 'Email',
-                        color: const Color(0xFF9C94FF),
+                        color: AppTheme.secondaryAccent,
                         onTap: () =>
                             _launchUrl('mailto:sohailcollege2032008@gmail.com'),
                       ),

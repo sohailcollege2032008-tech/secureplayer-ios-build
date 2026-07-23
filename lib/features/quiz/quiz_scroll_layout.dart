@@ -8,6 +8,7 @@ import '../../local_server/server_provider.dart';
 import '../../shared/encrypted_image_cache_mixin.dart';
 import 'quiz_question_body.dart';
 import 'quiz_shuffle.dart';
+import '../../app/theme.dart';
 
 /// All questions in one scrollable page, each in its own box that expands
 /// once answered to reveal the explanation — the alternative to
@@ -133,7 +134,7 @@ class _ExpandingQuestionCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
@@ -152,13 +153,13 @@ class _ExpandingQuestionCard extends StatelessWidget {
                   height: 26,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF6C63FF).withValues(alpha: 0.2),
+                    color: AppTheme.primary.withValues(alpha: 0.2),
                   ),
                   child: Center(
                     child: Text(
                       '${index + 1}',
                       style: const TextStyle(
-                        color: Color(0xFF6C63FF),
+                        color: AppTheme.primary,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
@@ -190,7 +191,7 @@ class _ExpandingQuestionCard extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: selectedOption != null ? onSubmit : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
+                    backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: Colors.white12,
                     disabledForegroundColor: Colors.white38,

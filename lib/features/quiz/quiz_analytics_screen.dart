@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'quiz_history_service.dart';
+import '../../app/theme.dart';
 
 /// The student's own attempt history for one quiz — replaces the leaderboard
 /// button's old spot on quiz_result_screen.dart. Reuses groupedQuizAttemptsProvider
@@ -21,9 +22,9 @@ class QuizAnalyticsScreen extends ConsumerWidget {
     final groupsAsync = ref.watch(groupedQuizAttemptsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         foregroundColor: Colors.white,
         title: Text(
           quizTitle,
@@ -33,7 +34,7 @@ class QuizAnalyticsScreen extends ConsumerWidget {
       ),
       body: groupsAsync.when(
         loading: () => const Center(
-            child: CircularProgressIndicator(color: Color(0xFF6C63FF))),
+            child: CircularProgressIndicator(color: AppTheme.primary)),
         error: (e, _) => Center(
             child:
                 Text(e.toString(), style: const TextStyle(color: Colors.white54))),
@@ -108,7 +109,7 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -117,7 +118,7 @@ class _StatCard extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-                color: Color(0xFF9C95FF),
+                color: AppTheme.secondaryAccent,
                 fontSize: 18,
                 fontWeight: FontWeight.bold),
           ),
@@ -146,11 +147,11 @@ class _AttemptRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: isBest
-              ? const Color(0xFF6C63FF).withValues(alpha: 0.4)
+              ? AppTheme.primary.withValues(alpha: 0.4)
               : Colors.white.withValues(alpha: 0.06),
         ),
       ),

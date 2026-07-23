@@ -6,6 +6,7 @@ import '../../core/services/quiz_db_service.dart';
 import '../export/quiz_export_sheet.dart';
 import 'review_deck.dart';
 import 'review_providers.dart';
+import '../../app/theme.dart';
 
 /// Scope picker for the starred-questions library — same source picker as
 /// [ReviewScopeScreen] (course/lecture checkboxes), but no filter mode and
@@ -27,9 +28,9 @@ class _StarredScopeScreenState extends ConsumerState<StarredScopeScreen> {
     final overviewAsync = ref.watch(starredScopeOverviewProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         foregroundColor: Colors.white,
         title: const Text(
           'Starred Questions',
@@ -38,7 +39,7 @@ class _StarredScopeScreenState extends ConsumerState<StarredScopeScreen> {
       ),
       body: overviewAsync.when(
         loading: () => const Center(
-            child: CircularProgressIndicator(color: Color(0xFF6C63FF))),
+            child: CircularProgressIndicator(color: AppTheme.primary)),
         error: (e, _) => Center(
           child: Text('Could not load lectures: $e',
               style: const TextStyle(color: Colors.white70)),
@@ -95,7 +96,7 @@ class _StarredScopeScreenState extends ConsumerState<StarredScopeScreen> {
                   child: ElevatedButton(
                     onPressed: _selected.isEmpty ? null : _openBrowse,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6C63FF),
+                      backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: Colors.white12,
                       disabledForegroundColor: Colors.white38,
@@ -118,8 +119,8 @@ class _StarredScopeScreenState extends ConsumerState<StarredScopeScreen> {
                   OutlinedButton(
                     onPressed: _exportSelected,
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF6C63FF),
-                      side: const BorderSide(color: Color(0xFF6C63FF)),
+                      foregroundColor: AppTheme.primary,
+                      side: const BorderSide(color: AppTheme.primary),
                       padding: const EdgeInsets.symmetric(
                           vertical: 16, horizontal: 14),
                       shape: RoundedRectangleBorder(
@@ -194,7 +195,7 @@ class _StarredScopeScreenState extends ConsumerState<StarredScopeScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isPersonal
@@ -215,7 +216,7 @@ class _StarredScopeScreenState extends ConsumerState<StarredScopeScreen> {
                 _selected.addAll(lectureIds);
               }
             }),
-            activeColor: const Color(0xFF6C63FF),
+            activeColor: AppTheme.primary,
             checkColor: Colors.white,
             side: const BorderSide(color: Colors.white38),
             controlAffinity: ListTileControlAffinity.leading,
@@ -254,7 +255,7 @@ class _StarredScopeScreenState extends ConsumerState<StarredScopeScreen> {
             ? _selected.remove(lecture.lectureId)
             : _selected.add(lecture.lectureId);
       }),
-      activeColor: const Color(0xFF6C63FF),
+      activeColor: AppTheme.primary,
       checkColor: Colors.white,
       side: const BorderSide(color: Colors.white24),
       controlAffinity: ListTileControlAffinity.leading,
@@ -273,18 +274,18 @@ class _StarredScopeScreenState extends ConsumerState<StarredScopeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF6C63FF).withValues(alpha: 0.15),
+        color: AppTheme.primary.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star_rounded, color: Color(0xFF9C95FF), size: 12),
+          const Icon(Icons.star_rounded, color: AppTheme.secondaryAccent, size: 12),
           const SizedBox(width: 3),
           Text(
             '$count',
             style: const TextStyle(
-              color: Color(0xFF9C95FF),
+              color: AppTheme.secondaryAccent,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),

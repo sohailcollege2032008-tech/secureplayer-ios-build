@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../app/theme.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -74,7 +75,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -85,7 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const Icon(
                   Icons.play_circle_fill_rounded,
                   size: 72,
-                  color: Color(0xFF6C63FF),
+                  color: AppTheme.primary,
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -191,7 +192,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           messenger.showSnackBar(
                             const SnackBar(
                               content: Text('Password reset email sent.'),
-                              backgroundColor: Color(0xFF6C63FF),
+                              backgroundColor: AppTheme.primary,
                             ),
                           );
                         }
@@ -215,7 +216,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: ElevatedButton(
                     onPressed: _loading ? null : _signIn,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6C63FF),
+                      backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -255,7 +256,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: const Text(
                         'Create one',
                         style: TextStyle(
-                            color: Color(0xFF6C63FF),
+                            color: AppTheme.primary,
                             fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -297,7 +298,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 1.5),
+          borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

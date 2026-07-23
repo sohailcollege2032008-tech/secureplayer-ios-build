@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const _primary = Color(0xFF6C63FF);
-  static const _background = Color(0xFF0D0D0D);
-  static const _surface = Color(0xFF1A1A2E);
+  // Single point of control for this brand's palette -- change these 4
+  // values to re-theme the whole app for a different white-label brand.
+  // Every screen references these instead of hardcoding hex literals.
+  static const primary = Color(0xFF6C63FF);
+  static const secondaryAccent = Color(0xFF9C95FF);
+  static const background = Color(0xFF0D0D0D);
+  static const surface = Color(0xFF1A1A2E);
 
   static ThemeData get dark => ThemeData(
         useMaterial3: true,
         colorScheme: const ColorScheme.dark(
-          primary: _primary,
-          surface: _surface,
+          primary: primary,
+          surface: surface,
           onPrimary: Colors.white,
           onSurface: Colors.white,
         ),
-        scaffoldBackgroundColor: _background,
+        scaffoldBackgroundColor: background,
         appBarTheme: const AppBarTheme(
-          backgroundColor: _background,
+          backgroundColor: background,
           foregroundColor: Colors.white,
           elevation: 0,
           centerTitle: false,
@@ -26,7 +30,7 @@ class AppTheme {
           ),
         ),
         snackBarTheme: SnackBarThemeData(
-          backgroundColor: _surface,
+          backgroundColor: surface,
           contentTextStyle: const TextStyle(color: Colors.white),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -35,7 +39,7 @@ class AppTheme {
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: _primary,
+            backgroundColor: primary,
             foregroundColor: Colors.white,
             elevation: 0,
             shape: RoundedRectangleBorder(
@@ -44,10 +48,10 @@ class AppTheme {
           ),
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: _primary,
+          backgroundColor: primary,
           foregroundColor: Colors.white,
         ),
         progressIndicatorTheme:
-            const ProgressIndicatorThemeData(color: _primary),
+            const ProgressIndicatorThemeData(color: primary),
       );
 }

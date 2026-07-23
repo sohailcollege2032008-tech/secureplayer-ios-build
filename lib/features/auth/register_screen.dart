@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_links.dart';
 import '../../core/services/firestore_rest.dart';
+import '../../app/theme.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -90,7 +91,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       context: context,
       isDismissible: false,
       enableDrag: false,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -103,11 +104,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: const Color(0xFF6C63FF).withValues(alpha: 0.15),
+                color: AppTheme.primary.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.check_circle_rounded,
-                  color: Color(0xFF6C63FF), size: 28),
+                  color: AppTheme.primary, size: 28),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -128,15 +129,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFF0D0D0D),
+                color: AppTheme.background,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                    color: const Color(0xFF6C63FF).withValues(alpha: 0.35)),
+                    color: AppTheme.primary.withValues(alpha: 0.35)),
               ),
               child: Text(
                 email,
                 style: const TextStyle(
-                    color: Color(0xFF6C63FF),
+                    color: AppTheme.primary,
                     fontSize: 14,
                     fontWeight: FontWeight.w600),
               ),
@@ -151,7 +152,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   // Router will redirect to /courses once auth state settles
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6C63FF),
+                  backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
@@ -186,7 +187,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -197,7 +198,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const Icon(
                   Icons.play_circle_fill_rounded,
                   size: 72,
-                  color: Color(0xFF6C63FF),
+                  color: AppTheme.primary,
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -302,7 +303,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       value: _agreedToPrivacyPolicy,
                       onChanged: (v) =>
                           setState(() => _agreedToPrivacyPolicy = v ?? false),
-                      activeColor: const Color(0xFF6C63FF),
+                      activeColor: AppTheme.primary,
                     ),
                     Expanded(
                       child: GestureDetector(
@@ -319,7 +320,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               TextSpan(
                                 text: 'Privacy Policy',
                                 style: const TextStyle(
-                                  color: Color(0xFF6C63FF),
+                                  color: AppTheme.primary,
                                   fontWeight: FontWeight.w600,
                                 ),
                                 recognizer: TapGestureRecognizer()
@@ -369,7 +370,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: ElevatedButton(
                     onPressed: _loading ? null : _register,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6C63FF),
+                      backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -403,7 +404,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: const Text(
                         'Sign In',
                         style: TextStyle(
-                            color: Color(0xFF6C63FF),
+                            color: AppTheme.primary,
                             fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -445,7 +446,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 1.5),
+          borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
