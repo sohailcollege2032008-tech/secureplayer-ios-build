@@ -11,6 +11,7 @@ import 'quiz_attempt_result.dart';
 import 'quiz_history_service.dart';
 import 'quiz_provider.dart';
 import 'review_sync_service.dart';
+import '../../app/theme.dart';
 
 class QuizResultScreen extends ConsumerStatefulWidget {
   const QuizResultScreen({super.key, required this.result});
@@ -75,7 +76,7 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
     final wantsUpdate = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: AppTheme.surface,
         title: const Text('Update review questions?',
             style: TextStyle(color: Colors.white)),
         content: const Text(
@@ -91,7 +92,7 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Yes', style: TextStyle(color: Color(0xFF9C95FF))),
+            child: const Text('Yes', style: TextStyle(color: AppTheme.secondaryAccent)),
           ),
         ],
       ),
@@ -101,7 +102,7 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
     var scope = ReviewFilterMode.wholeExam;
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -133,7 +134,7 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(ctx, true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6C63FF),
+                      backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -170,9 +171,9 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
             : Colors.redAccent;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         foregroundColor: Colors.white,
         title: const Text(
           'Quiz Result',
@@ -249,8 +250,8 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
                       extra: {'title': r.quiz.title},
                     ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF6C63FF),
-                      side: const BorderSide(color: Color(0xFF6C63FF)),
+                      foregroundColor: AppTheme.primary,
+                      side: const BorderSide(color: AppTheme.primary),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14)),
@@ -274,7 +275,7 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6C63FF),
+                  backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -339,7 +340,7 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isCorrect

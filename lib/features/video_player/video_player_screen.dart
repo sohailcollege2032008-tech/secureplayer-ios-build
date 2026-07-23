@@ -42,6 +42,7 @@ import '../../security_layer/runtime_guard/security_runtime_guard_service.dart';
 import '../../security_layer/watermark/secure_pdf_view.dart';
 import '../../security_layer/watermark/watermark_overlay.dart';
 import '../../shared/html_file_viewer.dart';
+import '../../app/theme.dart';
 
 class VideoPlayerScreen extends ConsumerStatefulWidget {
   const VideoPlayerScreen({
@@ -748,7 +749,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
     _controlsHideTimer?.cancel();
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -789,7 +790,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
                   sp == 1.0 ? 'Normal' : '${sp}x',
                   style: TextStyle(
                     color: sp == _playbackSpeed
-                        ? const Color(0xFF6C63FF)
+                        ? AppTheme.primary
                         : Colors.white70,
                     fontWeight: sp == _playbackSpeed
                         ? FontWeight.bold
@@ -798,7 +799,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
                 ),
                 trailing: sp == _playbackSpeed
                     ? const Icon(Icons.check_rounded,
-                        color: Color(0xFF6C63FF), size: 18)
+                        color: AppTheme.primary, size: 18)
                     : null,
                 onTap: () {
                   Navigator.pop(ctx);
@@ -1071,7 +1072,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
               trackHeight: 3,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
               overlayShape: SliderComponentShape.noOverlay,
-              activeTrackColor: const Color(0xFF6C63FF),
+              activeTrackColor: AppTheme.primary,
               inactiveTrackColor: Colors.white24,
               thumbColor: Colors.white,
             ),
@@ -1343,13 +1344,13 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
 
   Widget _buildLandscapePanel(VideoServerReady ready) {
     return Container(
-      color: const Color(0xFF0D0D0D),
+      color: AppTheme.background,
       child: Column(
         children: [
           // Header: close + file selector
           Container(
             height: 44,
-            color: const Color(0xFF1A1A2E),
+            color: AppTheme.surface,
             child: Row(
               children: [
                 IconButton(
@@ -1392,7 +1393,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
   Widget _buildFileChipsBar() {
     return Container(
       height: 44,
-      color: const Color(0xFF1A1A2E),
+      color: AppTheme.surface,
       child: _buildFileSelectorRow(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
     );
@@ -1424,12 +1425,12 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: selected
-              ? const Color(0xFF6C63FF)
+              ? AppTheme.primary
               : Colors.white.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected
-                ? const Color(0xFF6C63FF)
+                ? AppTheme.primary
                 : Colors.white.withValues(alpha: 0.12),
           ),
         ),
@@ -1510,7 +1511,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
                 LinearProgressIndicator(
                   value: progress,
                   backgroundColor: Colors.white12,
-                  color: const Color(0xFF6C63FF),
+                  color: AppTheme.primary,
                   minHeight: 4,
                   borderRadius: BorderRadius.circular(2),
                 ),
@@ -1520,7 +1521,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
                   style: const TextStyle(color: Colors.white54, fontSize: 12),
                 ),
               ] else
-                const CircularProgressIndicator(color: Color(0xFF6C63FF)),
+                const CircularProgressIndicator(color: AppTheme.primary),
             ],
           ),
         ),
@@ -1686,7 +1687,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const CircularProgressIndicator(color: Color(0xFF6C63FF)),
+            const CircularProgressIndicator(color: AppTheme.primary),
             const SizedBox(height: 16),
             Text(label, style: const TextStyle(color: Colors.white70)),
           ],
@@ -1716,7 +1717,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Retry'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6C63FF),
+                  backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.white,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 24, vertical: 12),

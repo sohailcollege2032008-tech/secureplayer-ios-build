@@ -13,6 +13,7 @@ import '../quiz/quiz_settings_provider.dart';
 import '../quiz/quiz_text_styles.dart';
 import 'review_deck.dart';
 import 'review_providers.dart';
+import '../../app/theme.dart';
 
 /// A plain browsable repository of every starred question across the picked
 /// sources — always shown revealed (correct answer + explanation visible
@@ -107,18 +108,18 @@ class _StarredBrowseScreenState extends ConsumerState<StarredBrowseScreen>
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(
-        backgroundColor: Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+          child: CircularProgressIndicator(color: AppTheme.primary),
         ),
       );
     }
 
     if (_deck.isEmpty) {
       return Scaffold(
-        backgroundColor: const Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         appBar: AppBar(
-          backgroundColor: const Color(0xFF0D0D0D),
+          backgroundColor: AppTheme.background,
           foregroundColor: Colors.white,
           title: const Text('Starred Questions',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
@@ -161,9 +162,9 @@ class _StarredBrowseScreenState extends ConsumerState<StarredBrowseScreen>
     final settings = ref.watch(quizSettingsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         foregroundColor: Colors.white,
         title: const Text('Starred Questions',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../review_deck.dart';
+import '../../../app/theme.dart';
 
 /// The 4-option ReviewFilterMode picker, shared by the review scope screen
 /// (picking what to review right now) and the quiz retake confirmation flow
@@ -40,8 +41,8 @@ class FilterModePicker extends StatelessWidget {
             backgroundColor: Colors.white.withValues(alpha: 0.04),
             foregroundColor: Colors.white54,
             selectedBackgroundColor:
-                const Color(0xFF6C63FF).withValues(alpha: 0.2),
-            selectedForegroundColor: const Color(0xFF9C95FF),
+                AppTheme.primary.withValues(alpha: 0.2),
+            selectedForegroundColor: AppTheme.secondaryAccent,
             side: const BorderSide(color: Colors.white12),
           ),
         ),

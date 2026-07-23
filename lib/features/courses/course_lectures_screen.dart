@@ -15,6 +15,7 @@ import 'courses_provider.dart';
 import 'enrolled_courses_provider.dart';
 import 'sec_importer.dart';
 import 'widgets/announcement_banner.dart';
+import '../../app/theme.dart';
 
 class CourseLecturesScreen extends ConsumerStatefulWidget {
   const CourseLecturesScreen({
@@ -265,10 +266,10 @@ class _CourseLecturesScreenState extends ConsumerState<CourseLecturesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       drawer: const AppDrawer(),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
@@ -297,7 +298,7 @@ class _CourseLecturesScreenState extends ConsumerState<CourseLecturesScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _import(context),
-        backgroundColor: const Color(0xFF6C63FF),
+        backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.file_open_rounded),
         label: const Text(
@@ -307,8 +308,8 @@ class _CourseLecturesScreenState extends ConsumerState<CourseLecturesScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,
-        color: const Color(0xFF6C63FF),
-        backgroundColor: const Color(0xFF1A1A2E),
+        color: AppTheme.primary,
+        backgroundColor: AppTheme.surface,
         child: _buildBody(context),
       ),
     );
@@ -352,7 +353,7 @@ class _CourseLecturesScreenState extends ConsumerState<CourseLecturesScreen> {
                 ElevatedButton(
                   onPressed: _refresh,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
+                    backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
                   ),
                   child: const Text('Retry'),
@@ -410,14 +411,14 @@ class _CourseLecturesScreenState extends ConsumerState<CourseLecturesScreen> {
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Color(0xFF6C63FF),
+                        color: AppTheme.primary,
                       ),
                     )
                   : TextButton(
                       onPressed: _loadMoreLectures,
                       child: const Text(
                         'Load more',
-                        style: TextStyle(color: Color(0xFF6C63FF)),
+                        style: TextStyle(color: AppTheme.primary),
                       ),
                     ),
             ),
@@ -469,11 +470,11 @@ class _LectureCard extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: lecture.isImported
-              ? const Color(0xFF6C63FF).withValues(alpha: 0.3)
+              ? AppTheme.primary.withValues(alpha: 0.3)
               : Colors.white.withValues(alpha: 0.06),
         ),
       ),
@@ -484,7 +485,7 @@ class _LectureCard extends ConsumerWidget {
             height: 48,
             decoration: BoxDecoration(
               color: lecture.isImported
-                  ? const Color(0xFF6C63FF).withValues(alpha: 0.2)
+                  ? AppTheme.primary.withValues(alpha: 0.2)
                   : Colors.white.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(10),
             ),
@@ -495,7 +496,7 @@ class _LectureCard extends ConsumerWidget {
                       ? Icons.folder_open_rounded
                       : Icons.play_circle_filled_rounded,
               color: lecture.isImported
-                  ? const Color(0xFF6C63FF)
+                  ? AppTheme.primary
                   : Colors.white24,
               size: 26,
             ),
@@ -610,10 +611,10 @@ class _GeneralQuizzesSection extends StatelessWidget {
             TextButton.icon(
               onPressed: onImport,
               icon: const Icon(Icons.file_open_rounded,
-                  size: 15, color: Color(0xFF6C63FF)),
+                  size: 15, color: AppTheme.primary),
               label: const Text(
                 'Import .secquiz',
-                style: TextStyle(color: Color(0xFF6C63FF), fontSize: 12),
+                style: TextStyle(color: AppTheme.primary, fontSize: 12),
               ),
             ),
           ],
@@ -633,7 +634,7 @@ class _GeneralQuizzesSection extends StatelessWidget {
                       height: 16,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Color(0xFF6C63FF),
+                        color: AppTheme.primary,
                       ),
                     ),
                   )
@@ -641,7 +642,7 @@ class _GeneralQuizzesSection extends StatelessWidget {
                     onPressed: onLoadMore,
                     child: const Text(
                       'Load more quizzes',
-                      style: TextStyle(color: Color(0xFF6C63FF), fontSize: 12),
+                      style: TextStyle(color: AppTheme.primary, fontSize: 12),
                     ),
                   ),
           ),
@@ -671,11 +672,11 @@ class _GeneralQuizCollectionCard extends ConsumerWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A2E),
+          color: AppTheme.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: collection.isImported
-                ? const Color(0xFF6C63FF).withValues(alpha: 0.3)
+                ? AppTheme.primary.withValues(alpha: 0.3)
                 : Colors.white.withValues(alpha: 0.06),
           ),
         ),
@@ -686,7 +687,7 @@ class _GeneralQuizCollectionCard extends ConsumerWidget {
               height: 48,
               decoration: BoxDecoration(
                 color: collection.isImported
-                    ? const Color(0xFF6C63FF).withValues(alpha: 0.2)
+                    ? AppTheme.primary.withValues(alpha: 0.2)
                     : Colors.white.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -695,7 +696,7 @@ class _GeneralQuizCollectionCard extends ConsumerWidget {
                     ? Icons.quiz_rounded
                     : Icons.lock_outline_rounded,
                 color: collection.isImported
-                    ? const Color(0xFF6C63FF)
+                    ? AppTheme.primary
                     : Colors.white24,
                 size: 26,
               ),
@@ -751,7 +752,7 @@ class _ImportProgressDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct = progress.progress;
     return Dialog(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.surface,
       shape:
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -760,7 +761,7 @@ class _ImportProgressDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.lock_outline_rounded,
-                color: Color(0xFF6C63FF), size: 40),
+                color: AppTheme.primary, size: 40),
             const SizedBox(height: 16),
             const Text(
               'Importing Lecture',
@@ -777,7 +778,7 @@ class _ImportProgressDialog extends StatelessWidget {
                 value: pct,
                 minHeight: 8,
                 backgroundColor: Colors.white12,
-                color: const Color(0xFF6C63FF),
+                color: AppTheme.primary,
               ),
             ),
             const SizedBox(height: 12),
@@ -785,7 +786,7 @@ class _ImportProgressDialog extends StatelessWidget {
               Text(
                 '${(pct * 100).toStringAsFixed(0)}%',
                 style: const TextStyle(
-                  color: Color(0xFF6C63FF),
+                  color: AppTheme.primary,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                 ),

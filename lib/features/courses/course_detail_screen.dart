@@ -18,6 +18,7 @@ import '../../shared/widgets/loading_indicator.dart';
 import '../quiz/quiz_history_service.dart';
 import '../quiz/quiz_provider.dart';
 import 'courses_provider.dart';
+import '../../app/theme.dart';
 
 // Provides EVERY normal quiz + last attempt for a specific video (keyed by
 // lectureId:videoId) — not just the first — so a video with several attached
@@ -222,10 +223,10 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
     final coursesAsync = ref.watch(localCoursesProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       drawer: const AppDrawer(),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         foregroundColor: Colors.white,
         leading: IconButton(
           icon:
@@ -285,7 +286,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                 const Row(
                   children: [
                     Icon(Icons.folder_open_rounded,
-                        color: Color(0xFF6C63FF), size: 20),
+                        color: AppTheme.primary, size: 20),
                     SizedBox(width: 8),
                     Text(
                       'Files & Materials',
@@ -493,7 +494,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF6C63FF),
+            backgroundColor: AppTheme.primary,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape:
@@ -533,7 +534,7 @@ class _VideoGroup extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -588,11 +589,11 @@ class _VideoGroupContent extends ConsumerWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6C63FF).withValues(alpha: 0.15),
+                    color: AppTheme.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.play_circle_outline_rounded,
-                      color: Color(0xFF6C63FF), size: 26),
+                      color: AppTheme.primary, size: 26),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -641,7 +642,7 @@ class _VideoGroupContent extends ConsumerWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6C63FF),
+                    color: AppTheme.primary,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
@@ -734,10 +735,10 @@ class _MultiVideoQuizGroupCard extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: const Color(0xFF6C63FF).withValues(alpha: 0.3),
+          color: AppTheme.primary.withValues(alpha: 0.3),
           width: 1.5,
         ),
       ),
@@ -969,13 +970,13 @@ class _AttachedQuizRow extends StatelessWidget {
           child: Row(
             children: [
               const Icon(Icons.quiz_rounded,
-                  color: Color(0xFF6C63FF), size: 16),
+                  color: AppTheme.primary, size: 16),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   quiz.title.isNotEmpty ? quiz.title : 'Quiz',
                   style:
-                      const TextStyle(color: Color(0xFF9C94FF), fontSize: 13),
+                      const TextStyle(color: AppTheme.secondaryAccent, fontSize: 13),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -991,7 +992,7 @@ class _AttachedQuizRow extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6C63FF),
+                  color: AppTheme.primary,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text(

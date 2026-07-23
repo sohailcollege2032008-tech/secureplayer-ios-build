@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../shared/widgets/loading_indicator.dart';
 import 'quiz_provider.dart';
+import '../../app/theme.dart';
 
 /// Lists the quizzes inside one standalone General Quiz collection (imported
 /// from a `.secquiz` file). Tapping a quiz reuses the existing
@@ -25,9 +26,9 @@ class GeneralQuizCollectionScreen extends ConsumerWidget {
     final quizzesAsync = ref.watch(generalQuizzesProvider(collectionId));
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
@@ -65,7 +66,7 @@ class GeneralQuizCollectionScreen extends ConsumerWidget {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A2E),
+                  color: AppTheme.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
                 ),
@@ -76,11 +77,11 @@ class GeneralQuizCollectionScreen extends ConsumerWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6C63FF).withValues(alpha: 0.15),
+                      color: AppTheme.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(Icons.quiz_rounded,
-                        color: Color(0xFF6C63FF), size: 22),
+                        color: AppTheme.primary, size: 22),
                   ),
                   title: Text(
                     quiz.title.isNotEmpty ? quiz.title : 'Quiz',

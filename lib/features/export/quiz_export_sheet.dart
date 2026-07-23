@@ -12,6 +12,7 @@ import '../../local_server/server_provider.dart';
 import '../review/review_deck.dart';
 import 'review_deck_export.dart';
 import 'single_quiz_anki_export.dart';
+import '../../app/theme.dart';
 
 /// Bottom sheet offering export formats for [quiz]. Gated by
 /// `quiz.isPersonalQuiz || quiz.exportAllowed` — course quizzes the teacher
@@ -27,7 +28,7 @@ Future<void> showQuizExportSheet(
 
   return showModalBottomSheet<void>(
     context: context,
-    backgroundColor: const Color(0xFF1A1A2E),
+    backgroundColor: AppTheme.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -104,7 +105,7 @@ Future<void> showReviewExportSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
-    backgroundColor: const Color(0xFF1A1A2E),
+    backgroundColor: AppTheme.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -185,7 +186,7 @@ class _ExportRow extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       enabled: enabled,
-      leading: Icon(icon, color: enabled ? const Color(0xFF6C63FF) : Colors.white24),
+      leading: Icon(icon, color: enabled ? AppTheme.primary : Colors.white24),
       title: Text(title, style: TextStyle(color: enabled ? Colors.white : Colors.white38)),
       subtitle: Text(subtitle,
           style: const TextStyle(color: Colors.white38, fontSize: 12)),

@@ -16,9 +16,9 @@ class SecurePlayerApp extends ConsumerWidget {
       loading: () => const MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Scaffold(
-          backgroundColor: Color(0xFF0D0D0D),
+          backgroundColor: AppTheme.background,
           body: Center(
-            child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+            child: CircularProgressIndicator(color: AppTheme.primary),
           ),
         ),
       ),
@@ -46,7 +46,7 @@ class SecurePlayerApp extends ConsumerWidget {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        backgroundColor: Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         body: Center(
           child: Padding(
             padding: EdgeInsets.all(32),

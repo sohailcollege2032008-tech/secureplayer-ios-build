@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_windows/webview_windows.dart';
+import '../app/theme.dart';
 
 /// Platform-aware HTML viewer widget.
 ///
@@ -176,7 +177,7 @@ class _HtmlFileViewerState extends State<HtmlFileViewer> {
     }
     if (!_windowsReady) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+        child: CircularProgressIndicator(color: AppTheme.primary),
       );
     }
     // _windowsCtrl is always non-null when _windowsReady is true (set in _initWindows)

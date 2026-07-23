@@ -17,6 +17,7 @@ import 'quiz_scroll_layout.dart';
 import 'quiz_settings_provider.dart';
 import 'quiz_settings_screen.dart';
 import 'quiz_shuffle.dart';
+import '../../app/theme.dart';
 
 class QuizScreen extends ConsumerStatefulWidget {
   const QuizScreen({
@@ -352,9 +353,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
   Widget build(BuildContext context) {
     if (!_progressLoaded) {
       return const Scaffold(
-        backgroundColor: Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+          child: CircularProgressIndicator(color: AppTheme.primary),
         ),
       );
     }
@@ -403,9 +404,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       }
     }
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D0D),
+        backgroundColor: AppTheme.background,
         foregroundColor: Colors.white,
         title: Text(
           widget.quiz.title,
@@ -453,7 +454,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                 LinearProgressIndicator(
                   value: (_currentIndex + 1) / _total,
                   backgroundColor: Colors.white12,
-                  color: const Color(0xFF6C63FF),
+                  color: AppTheme.primary,
                   minHeight: 3,
                 ),
                 Expanded(
@@ -523,7 +524,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       child: ElevatedButton(
         onPressed: canSubmit ? _submit : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF6C63FF),
+          backgroundColor: AppTheme.primary,
           foregroundColor: Colors.white,
           disabledBackgroundColor: Colors.white12,
           disabledForegroundColor: Colors.white38,
