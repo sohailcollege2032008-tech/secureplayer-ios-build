@@ -634,16 +634,7 @@ void _showAppInfoDialog(BuildContext context) {
                     ],
                   ),
                 ),
-                const SizedBox(height: 14),
-                const Text(
-                  'Want a similar app built for your own courses or business?',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
