@@ -1,0 +1,80 @@
+# Mashrou3 Dactoor — iOS / App Store Session Handoff
+
+**Written:** 2026-07-23, end of a long Claude Code session. Read this file first if you're picking up this work (human or AI agent) — it covers everything done, decided, and still broken as of this point. Also read `CLAUDE.md` in this repo and in `D:\Projects\Antigravity\secure` for the standing architecture facts this doc doesn't repeat.
+
+## TL;DR — what's actually blocking right now
+
+**The App Store reviewer demo account shows the course as enrolled, but the lecture stays permanently locked (never imports).** This is a real, unresolved, unfixed bug. Root cause not yet found — see the full section below before doing anything else. Do not tell the user "it's ready" until this is actually fixed and verified on a real device.
+
+Current build: `whitelabel-full` branch, version `1.0.0+131` (just bumped, bug still present in this build).
+
+---
+
+## 1. Repo/branch architecture (context)
+
+- `secure` (`D:\Projects\Antigravity\secure`) — main repo, Android + Windows student app. Branch `whitelabel-build` = Mashrou3 Dactoor.
+- `secure-ios-build` (this repo) — **completely separate git history from `secure`**, exists purely because iOS needs a Mac/cloud-Mac (Codemagic). Branches:
+  - `main` = base unbranded SecurePlayer (bundle id `com.secureplayer.securePlayer`) — **this is now also this repo's default branch** (see git-hygiene section below for why that matters).
+  - `whitelabel-full` = Mashrou3 Dactoor **production** (bundle id `com.mashrou3dactoor.player`). This is the one that gets built and submitted to Apple. No test bypasses.
+  - `whitelabel-visual` = Mashrou3 Dactoor **cloud-testing only** (has `SKIP_DEVICE_CHECK`/`AUTO_IMPORT_DEMO` dart-define flags baked into some build commands). Never submit a build from this branch to Apple.
+- A third party ("الراجل") does the real Codemagic build + App Store Connect submission using **his own** Codemagic account (already connected to his own Apple Developer Program membership) and **his own** paid third-party app-publishing setup — he is not the client (course owner) and doesn't need to be; that's normal industry practice, no extra Apple scrutiny from it.
+
+## 2. Everything shipped this session (all on `whitelabel-full`, ported to `whitelabel-visual` too unless noted)
+
+- **App Info drawer section** (`lib/shared/widgets/app_drawer.dart`) — developer credit (Dr. Sohail Ahmed) + Telegram/email contact cards, separate from "About". Explicitly does **not** solicit "want an app like this built for you" — user asked for that line removed, keep it removed.
+- **Codemagic `ios-app-store-release` workflow** added to `codemagic.yaml` (only on `whitelabel-full`) — signed archive build via `app_store_connect` integration, publishes to TestFlight + submits for App Store review (`release_type: MANUAL`). **Still blocked** on the account owner completing: Apple Developer Program enrollment, an App Store Connect API key registered as a Codemagic integration named `mashrou3_asc`, and a real App Store Connect app record for `com.mashrou3dactoor.player` (numeric Apple ID still a `0000000000` placeholder in the yaml).
+- **App Store reviewer demo account** (`screenshot.demo@mashrou3dactoor.test` / `Screenshot2026!`) — real Firebase Auth account, enrolled in `demo_screenshot_course_001` / `demo_screenshot_lecture_001`. Auto-import logic in `course_list_screen.dart` (`_autoImportReviewerDemoIfNeeded`, gated on account email, not a build flag) is supposed to import the bundled `assets/demo/demo_course.sec` automatically on login. **This is the part that's currently broken — see section 4.**
+- **Branding fixes**: login screen title was hardcoded `'SecurePlayer'`, now says `'Mashrou3 Dactoor'`.
+- **Theme centralization**: `lib/app/theme.dart`'s `AppTheme` class had 3 private color constants nobody actually used (every screen hardcoded its own hex literal instead). Made them public (`primary`, `background`, `surface`), added a 4th (`secondaryAccent`, fixing an existing `0xFF9C95FF`/`0xFF9C94FF` typo split), and mechanically replaced ~228 hardcoded hex literal occurrences across ~33 files with `AppTheme.*` references. **Pure refactor, zero visual change** — colors are still the original purple. Re-theming to match the actual Mashrou3 Dactoor logo (monochrome doctor/globe) is now a 4-constant edit in one file, not done yet — no color VALUE has been picked. Deliberately done on the 3 Mashrou3 branches only, not on `secure`'s `master` / this repo's `main` (user chose shipping speed over "every future brand inherits it" architecture).
+- **QA test account exempt from device binding** (`qa.test@mashrou3dactoor.test` / `QaTest2026!`) — added a second, permanent, account-identity-gated exemption in `device_binding_service.dart` (alongside the existing `SKIP_DEVICE_CHECK` build flag on `whitelabel-visual` only). This account **never** writes or checks `device_id`, so it can be used to log in from any number of devices without ever getting locked out — meant to stop the team from accidentally re-locking the reviewer demo account during their own testing. Also enrolled in the same demo course.
+- **Forgot-password flow redesign** (`login_screen.dart`):
+  - Loading spinner shown immediately on tap (previously nothing visible happened until the network call resolved — this was the actual root cause of an earlier "forgot password doesn't work" report; it did work, there was just zero loading feedback).
+  - Button hidden by default, only appears after a sign-in attempt fails on wrong credentials.
+  - New Cloud Function **`checkEmailExists`** (deployed, live, tested working) tells the user explicitly "No account found with this email" instead of Firebase's default silent-success-regardless behavior (Google's Improved Email Privacy protection removed every client-side way to check email registration a few years ago — this required a small server-side workaround). Trade-off: this endpoint does reveal registration status to anyone who calls it — accepted deliberately, low risk for this app's content-only profile.
+  - Success message is now a persistent inline box (reusing the existing error-box styling, recolored), explicitly mentions checking Spam — not a `SnackBar` anymore (those are easy to miss entirely).
+- **Git hygiene fix**: this repo's GitHub default branch was `main` (base/unbranded) — anyone doing a plain `git clone` without explicitly checking out `whitelabel-full` would land on the wrong branch and see the wrong bundle ID (`com.secureplayer.securePlayer` instead of `com.mashrou3dactoor.player`). **Fixed**: changed the repo's default branch to `whitelabel-full` via `gh repo edit --default-branch whitelabel-full`. **Caveat discovered**: Codemagic caches whichever branch it saw as default *at the time a repo was first connected to a specific Codemagic app* — it does not auto-refresh when GitHub's setting changes later. Anyone with an existing Codemagic connection to this repo made before this fix needs to either explicitly select `whitelabel-full` in the branch field every time, or disconnect+reconnect the repository in their Codemagic app to force a fresh read.
+- **App Store category decision**: originally planned as Primary: Medical, Secondary: Education. **Changed to Primary: Education, no secondary** — Medical-category apps get extra Apple review scrutiny (Guideline 1.4, dosing/diagnostic tools), which doesn't apply here (this is a course-delivery platform, not a clinical tool) but the user preferred to just avoid the friction entirely rather than rely on that argument holding up under review. A plain-language educational disclaimer ("not a substitute for professional medical advice") was added to the App Store description text (English + Arabic) in the Obsidian planning doc (`D:\Projects\Obsidian\متطلبات App Store لتطبيق مشروع ضاكتور.md`) regardless.
+- **Emojis removed** from the App Store planning doc entirely, per explicit user instruction — keep that doc emoji-free going forward.
+- **Quiz content**: user asked for a 5-question sample quiz for testing purposes (bone count, heart chambers, largest organ, facial nerve, insulin production) — provided as plain text and then in the exact JSON shape Studio's quiz-import UI expects (`[{"title": ..., "questions": [...]}]` — note this is NOT the same schema as the student app's own `Quiz.fromJson` model, which nests things under `scope`/`trigger`; Studio's import format is deliberately simpler, scope/type get set afterward in Studio's own editor UI).
+
+## 3. Verified working (don't re-test these, they're confirmed)
+
+- `ios-unsigned-build` (Sideloadly) — full build succeeds end-to-end (~6.5-10 min) on `whitelabel-full`, most recently at commit `12a5b41`. Produces a real, installable `.ipa`.
+- `ios-simulator-build` (Appetize/BrowserStack + Codemagic App Preview) — succeeds, correctly produces the unzipped `Runner.app` artifact App Preview needs.
+- `checkEmailExists` Cloud Function — deployed to `us-central1`, tested directly against both a real and a fake email, both correct.
+- The demo account's Firestore data (`course_keys/demo_screenshot_lecture_001`, `lectures/demo_screenshot_lecture_001`, `courses/demo_screenshot_course_001`) — all confirmed present and correct (`is_published: true` on both course and lecture, real 32-char AES key present).
+- Simulating the exact `getCourseKey` Cloud Function call server-side (via a minted custom token + REST) for the demo account **succeeds** and returns a valid key. So the backend/Firestore side of the demo-import flow is not the problem.
+
+## 4. CRITICAL, UNRESOLVED — demo lecture stays locked
+
+**Symptom** (user-reported, reproduced on his own tablet): logs into the app with `screenshot.demo@mashrou3dactoor.test`, the course "Demo Screenshot Course" appears in the course list (enrollment is visible — this part works), but the lecture inside it shows as locked/not-imported. No error is shown anywhere (by design — see the code comment in `_autoImportReviewerDemoIfNeeded`, it's a silent catch specifically so a real Apple reviewer never sees a scary error).
+
+**Ruled out so far:**
+- Firestore data is correct (course/lecture `is_published: true`, key exists with the right length, enrollment doc exists with `is_active: true`).
+- The `getCourseKey` Cloud Function itself works — reproduced the exact call server-side (mint a custom token for the demo account's uid, exchange for a real ID token, POST to the callable function with the same payload shape the app sends) and it returned a valid `keyHex` successfully.
+- The demo account's `students/{uid}.device_id` was `undefined` (null) at last check — meaning device binding is not currently blocking this call (the mismatch check in `getCourseKey` only fires if a *different* device_id is already registered; null skips it entirely).
+
+**Not yet checked / next things to try, in order:**
+1. **Directory-naming mismatch, most likely candidate.** `_autoImportReviewerDemoIfNeeded`'s "already imported" check reads `${appDir.path}/courses/$_reviewerDemoLectureId/metadata.json` (i.e. keyed by **lecture ID**, `demo_screenshot_lecture_001`) — confirmed this matches `courseLecturesProvider`'s own `isImported` check in `enrolled_courses_provider.dart` (also lecture-ID-keyed), so the check itself is consistent. But **never actually confirmed what directory `SecImporter._importV2` writes to** for a v2.1-format `.sec` — if it writes to `courses/{courseId}/` instead of `courses/{lectureId}/` (or some other convention), the import could be fully succeeding while writing to the wrong path, and the app's own lecture list would permanently show it as locked because it's checking a different directory than what got populated. **This was mid-investigation when the user asked to stop and just ship a version bump instead — pick this up first.** Read `lib/features/courses/sec_importer.dart`'s `_importV2` function (around line 182+) and confirm the actual `lectureDir`/`courseDir` path it writes extracted content to, compare directly against what `enrolled_courses_provider.dart` and `_autoImportReviewerDemoIfNeeded` check.
+2. If the path convention is confirmed correct, the next suspect is a genuine exception thrown somewhere inside `importFromPath` for this specific demo package that isn't the key fetch (since that's proven to work) — e.g. something in `_extractSec`, checksum validation against the bundled `demo_course.sec`'s metadata, or the outer-GCM device-binding step for the video segments. Since the catch block is silent, the fastest way to actually see the real exception is to temporarily (in a throwaway local build only, never commit this) change the `catch (_) {}` in `_autoImportReviewerDemoIfNeeded` to print/rethrow the error, or show it in a debug-only SnackBar, then run it once on a real device to capture the actual exception type and message.
+3. Also worth checking: is the exact currently-bundled `assets/demo/demo_course.sec` actually still valid/uncorrupted (was copied via `git show whitelabel-visual:assets/demo/demo_course.sec > assets/demo/demo_course.sec` originally) — a checksum/hash mismatch inside the package itself (metadata.json declares a checksum over segment bytes) could cause `_extractSec` or the outer-encryption step to fail silently.
+4. Confirm timing isn't the issue: the import is genuinely async (fetches key over network, extracts, re-encrypts video segments) — a user checking literally within 1-2 seconds of login might see "locked" simply because it hasn't finished yet. The user did report this on his own tablet after presumably some time had passed, but this hasn't been definitively ruled out with a controlled wait-and-refresh test.
+
+**Do not tell the user or "الراجل" this is fixed or ready until this is actually resolved and confirmed working on a real device with a fresh login.**
+
+## 5. Pending / not started
+
+- Full App Store Connect submission itself — blocked on Apple Developer Program + API key setup on the third party's end (see workflow note above).
+- iOS jailbreak/tamper detection is **still hard-disabled** (`RootDetectionService._iosDetectionTemporarilyDisabled = true` in `lib/security_layer/root_detection/root_detection_service.dart`, all 3 Mashrou3 branches plus `secure`'s `whitelabel-build`) — deliberate, user-approved stopgap from 2026-07-20 for a borrowed-test-device false positive, explicitly re-confirmed by the user this session as acceptable to defer since it's a defense-in-depth layer, not the thing protecting the actual encryption keys. **Must still be resolved before real App Store submission** — this is tracked, not forgotten, but not fixed.
+- Theme re-coloring (the actual visual change to match the Mashrou3 Dactoor logo) — plumbing is done, no color chosen yet.
+- Android: user builds this locally himself. A separate AI agent session may be concurrently working on Google Play Integrity API — check recent commits on `secure` before assuming nothing's changed there.
+- Windows installer packaging for this brand — not started.
+- A dedicated separate GitHub repo containing only `whitelabel-full`'s code (so there's no `main`/`whitelabel-visual` to accidentally land on at all) was proposed as the permanent fix for the branch-confusion problem — user said yes in principle but it hadn't been created as of this writing. If picking this up: push `whitelabel-full`'s current tree as a fresh single-branch repo (e.g. `mashrou3-dactoor-ios`), and that becomes the link handed to any future third-party publisher instead of this repo.
+
+## 6. Credentials reference (all already live, don't recreate)
+
+- App Store reviewer demo account: `screenshot.demo@mashrou3dactoor.test` / `Screenshot2026!`
+- Internal QA test account (device-binding-exempt): `qa.test@mashrou3dactoor.test` / `QaTest2026!`
+- Codemagic Team app (our own test app, not the third party's): `secureplayer-ios-build`, app ID `6a603b35714cb06697d16f6f`
+- Firebase project: `stud-future-platform-db`
+- Mashrou3 Dactoor privacy/support site: `https://mashrou3-dactoor.vercel.app` (separate repo `mashrou3-dactoor-site`, separate Vercel project)
