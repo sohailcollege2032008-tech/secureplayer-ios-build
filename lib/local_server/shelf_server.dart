@@ -4,6 +4,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
 import '../core/constants/server_constants.dart';
+import 'handlers/fairplay_static_handler.dart';
 import 'handlers/file_handler.dart';
 import 'handlers/html_handler.dart';
 import 'handlers/segment_handler.dart';
@@ -25,8 +26,32 @@ Handler buildShelfHandler({
   required String sessionToken,
   Map<String, String> fileIvMap = const {},
   String watermarkText = 'SECURE PLAYER',
+  // iOS only. getApplicationDocumentsDirectory().path — a DIFFERENT base
+  // than appDocPath (which is getApplicationSupportDirectory().path, where
+  // .sec content lives). FairPlay packages live under
+  // {appDocumentsPath}/fairplay_lectures/ — see fairplay_service.dart.
+  // Empty on Android/Windows, where this route is simply never hit.
+  String appDocumentsPath = '',
 }) {
   final router = Router();
+
+  // ── FairPlay static file route (iOS only) ────────────────────────────────
+  // No decryption here — files stay FairPlay-encrypted on the wire, exactly
+  // as they are at rest. Only exists because AVPlayer cannot stream an HLS
+  // .m3u8 playlist from a file:// URL (see fairplay_static_handler.dart).
+  router.get('/fairplay/<lid>/<vid>/<filename>',
+      (Request req, String lid, String vid, String filename) async {
+    if (!_isValidTokenOrParam(req, sessionToken)) return Response.forbidden('');
+    return fairplayStaticHandler(
+      Uri.decodeComponent(lid),
+      Uri.decodeComponent(vid),
+      Uri.decodeComponent(filename),
+      appDocumentsPath,
+      ServerConstants.localhost,
+      actualPort,
+      sessionToken,
+    );
+  });
 
   router.get('/key/<lid>',
       (Request req, String lid) async {

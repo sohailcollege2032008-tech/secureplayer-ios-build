@@ -131,6 +131,14 @@ class VideoServerNotifier extends AutoDisposeFamilyAsyncNotifier<
     final lectureDir = '${appDir.path}/courses/${arg.lectureId}';
     final fileIvMap = _readFileIvMap(lectureDir);
 
+    // getApplicationDocumentsDirectory() is a DIFFERENT base than appDir
+    // (getApplicationSupportDirectory()) — FairPlay packages live under
+    // the former (see fairplay_service.dart). Only needed on iOS, where
+    // the /fairplay static route is actually used.
+    final appDocumentsPath = Platform.isIOS
+        ? (await getApplicationDocumentsDirectory()).path
+        : '';
+
     final handler = buildShelfHandler(
       lectureId: arg.lectureId,
       actualPort: actualPort,
@@ -141,6 +149,7 @@ class VideoServerNotifier extends AutoDisposeFamilyAsyncNotifier<
       sessionToken: token,
       fileIvMap: fileIvMap,
       watermarkText: watermarkText,
+      appDocumentsPath: appDocumentsPath,
     );
 
     shelf_io.serveRequests(httpServer, handler);

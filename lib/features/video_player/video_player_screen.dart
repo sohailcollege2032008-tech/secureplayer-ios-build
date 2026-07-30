@@ -375,11 +375,13 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
     }
 
     // ── iOS with an imported FairPlay package: AVContentKeySession path ────
-    // Bypasses the shelf-server URL/token entirely — FairPlay content is
-    // read from a local file:// HLS package and decrypted by the OS's own
-    // secure video path, not by this app. See fairplay_service.dart.
+    // Reuses the shelf server's port/token (it's already running for every
+    // video regardless of platform) purely to make the package files
+    // HTTP-reachable — see fairplay_service.dart for why file:// doesn't
+    // work. No decryption happens through that HTTP layer; AVFoundation's
+    // own secure decode path does that, via the key AVContentKeySession got.
     if (Platform.isIOS && _fairplayPackageAvailable) {
-      _initFairplayPlayer();
+      _initFairplayPlayer(hlsUrl, sessionToken);
       return;
     }
 
@@ -387,11 +389,14 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
     _initAndroidPlayer(hlsUrl, sessionToken);
   }
 
-  void _initFairplayPlayer() {
+  void _initFairplayPlayer(String hlsUrl, String sessionToken) {
+    final port = Uri.parse(hlsUrl).port;
     FairplayService.buildDataSource(
       lectureId: widget.lectureId,
       videoId: widget.videoId,
       courseId: _courseId ?? widget.lectureId,
+      port: port,
+      token: sessionToken,
     ).then((dataSource) {
       if (!mounted || _controller != null) return;
 

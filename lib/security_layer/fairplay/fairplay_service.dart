@@ -13,13 +13,14 @@ import '../../core/utils/device_id_util.dart';
 /// better_player_plus's forked AVContentKeySession path
 /// (vendor/better_player_plus — see FairplayContentKeyDelegate.swift).
 ///
-/// Deliberately separate from the existing shelf-server video pipeline
-/// (local_server/): FairPlay content is already fully protected by the OS's
-/// own secure decode path once AVPlayer has a valid persisted content key,
-/// so there is nothing left for a local decrypt-and-serve HTTP layer to do.
-/// Shaka Packager's manifests use plain relative segment filenames, so
-/// AVPlayer can read the HLS package directly from a local file:// URL —
-/// no server, no manifest patching, unlike the Android/Windows path.
+/// Reuses the existing shelf-server (local_server/) that's already running
+/// for every video, but only to make the package files HTTP-reachable —
+/// AVPlayer/AVURLAsset cannot stream an HLS .m3u8 playlist from a local
+/// file:// URL at all (a fundamental AVFoundation/HLS limitation, not
+/// specific to FairPlay). No decryption happens in that HTTP layer: the
+/// served bytes stay fully FairPlay-encrypted, exactly as they are on disk.
+/// AVFoundation's own secure decode path is what actually decrypts them,
+/// using the content key AVContentKeySession obtained.
 class FairplayService {
   FairplayService._();
 
@@ -70,10 +71,24 @@ class FairplayService {
   /// Builds the BetterPlayerDataSource for a FairPlay-packaged video.
   /// Throws StateError if no package or no signed-in user — callers should
   /// have already checked hasLocalPackage() before reaching this point.
+  ///
+  /// port/token come from the already-running local shelf server (started
+  /// unconditionally for every video by videoServerProvider — see
+  /// server_provider.dart). The manifest is served over http://127.0.0.1
+  /// rather than read via file://, because AVPlayer/AVURLAsset cannot
+  /// stream an HLS .m3u8 playlist directly from local disk at all — that's
+  /// a fundamental AVFoundation/HLS limitation (confirmed by Apple
+  /// engineering: "you can't get m3u8 from the local filesystem"), not a
+  /// FairPlay-specific or Simulator-specific one. Surfaced as
+  /// "CoreMediaErrorDomain error -12865" on the very first real playback
+  /// attempt. The served bytes are still fully FairPlay-encrypted on the
+  /// wire — nothing here weakens what AVContentKeySession protects.
   static Future<BetterPlayerDataSource> buildDataSource({
     required String lectureId,
     required String videoId,
     required String courseId,
+    required int port,
+    required String token,
   }) async {
     final packageDir = await packageDirFor(lectureId, videoId);
     final masterPlaylist = File('${packageDir.path}/master.m3u8');
@@ -101,9 +116,12 @@ class FairplayService {
       'deviceId': deviceId,
     });
 
+    final manifestUrl =
+        'http://127.0.0.1:$port/fairplay/$lectureId/$videoId/master.m3u8?t=$token';
+
     return BetterPlayerDataSource(
       BetterPlayerDataSourceType.network,
-      'file://${masterPlaylist.path}',
+      manifestUrl,
       videoFormat: BetterPlayerVideoFormat.hls,
       drmConfiguration: BetterPlayerDrmConfiguration(
         drmType: BetterPlayerDrmType.fairplay,
