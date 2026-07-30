@@ -14,6 +14,7 @@ import '../core/constants/server_constants.dart';
 import '../core/errors/app_exception.dart';
 import '../core/utils/device_id_util.dart';
 import '../security_layer/adb_detection/adb_detection_service.dart';
+import '../security_layer/fairplay/fairplay_service.dart';
 import '../security_layer/secure_storage/secure_storage_provider.dart';
 import 'decryption/iv_map_crypto.dart';
 import 'shelf_server.dart';
@@ -92,11 +93,27 @@ class VideoServerNotifier extends AutoDisposeFamilyAsyncNotifier<
 
     final storage = ref.read(secureStorageProvider);
     // Key is stored under lectureId in v2
-    final keyHex = await storage.getKey(arg.lectureId);
+    var keyHex = await storage.getKey(arg.lectureId);
     if (keyHex == null) {
-      throw KeyNotFoundException(
-        'No decryption key found for lecture "${arg.lectureId}". Please re-import.',
-      );
+      // A pure FairPlay import (no accompanying .sec) never stores a key
+      // here by design — FairPlay's own AVContentKeySession/KSM exchange
+      // owns key material entirely, not flutter_secure_storage. Without
+      // this check, build() unconditionally watches this provider for
+      // every video regardless of platform/content type, so a missing key
+      // here would throw and permanently error out BEFORE
+      // video_player_screen.dart's FairPlay branch (_initFairplayPlayer)
+      // ever gets a chance to run — the shelf server this provider starts
+      // isn't even used for FairPlay video playback (served from a local
+      // file:// HLS package instead), so a placeholder is safe: nothing
+      // will ever decrypt a segment with it.
+      if (Platform.isIOS &&
+          await FairplayService.hasLocalPackage(arg.lectureId, arg.videoId)) {
+        keyHex = '0' * 32;
+      } else {
+        throw KeyNotFoundException(
+          'No decryption key found for lecture "${arg.lectureId}". Please re-import.',
+        );
+      }
     }
 
     final appDir = await getApplicationSupportDirectory();

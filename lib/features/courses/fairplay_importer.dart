@@ -63,8 +63,14 @@ class FairplayImporter {
   ) async {
     final supportDir = await getApplicationSupportDirectory();
     final courseDir = Directory('${supportDir.path}/courses/$lectureId');
+    final markerFile = File('${courseDir.path}/metadata.json');
+    // Never overwrite a REAL .sec import's metadata (richer content: actual
+    // file attachments, real file_iv_map) if this same lectureId happens to
+    // also have one — this marker only needs to exist, its own content is
+    // never otherwise read for a genuinely FairPlay lecture.
+    if (await markerFile.exists()) return;
     await courseDir.create(recursive: true);
-    await File('${courseDir.path}/metadata.json').writeAsString(jsonEncode({
+    await markerFile.writeAsString(jsonEncode({
       'format_version': '1.0-fairplay-marker',
       'lecture_id': lectureId,
       'course_id': metadata['course_id'] ?? lectureId,
