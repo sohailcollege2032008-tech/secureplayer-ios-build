@@ -82,18 +82,36 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
   // the (known, hardcoded — this exact content was built specifically as
   // this demo) lecture/video IDs BEFORE downloading anything, so a repeat
   // login after the first successful import never re-downloads the
-  // 200+ MB bundle. Fails soft at every step — never blocks the course
-  // list from rendering normally.
+  // 200+ MB bundle. Fails soft for real users, but for THIS account
+  // specifically the failure reason is surfaced on-screen (SnackBar) —
+  // this account only ever exists to be watched/debugged, silence here
+  // just makes it undiagnosable.
   Future<void> _autoImportFairplayDemo() async {
     const lectureId = 'fairplay_demo_001';
     const videoId = 'video_01';
+    void report(String msg) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('[FP demo] $msg'), duration: const Duration(seconds: 6)),
+      );
+    }
+
     try {
+      report('checking local package…');
       if (await FairplayImporter.isAlreadyImported(lectureId, videoId)) {
+        report('already imported — skipping');
         return;
       }
 
-      final response = await http.get(Uri.parse(kFairplayDemoAssetUrl));
-      if (response.statusCode != 200) return;
+      report('downloading bundle…');
+      final response = await http
+          .get(Uri.parse(kFairplayDemoAssetUrl))
+          .timeout(const Duration(minutes: 3));
+      if (response.statusCode != 200) {
+        report('download failed: HTTP ${response.statusCode}');
+        return;
+      }
+      report('downloaded ${response.bodyBytes.length} bytes, extracting…');
 
       final tempDir = await getTemporaryDirectory();
       final tempFile = File('${tempDir.path}/demo_lecture.secfp');
@@ -101,9 +119,11 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
 
       await FairplayImporter.importFromPath(tempFile.path);
       await tempFile.delete().catchError((_) => tempFile);
-    } catch (_) {
-      // Best-effort convenience feature — never blocks the course list from
-      // rendering normally if it fails for any reason.
+      report('import complete');
+      if (mounted) setState(() {}); // refresh UI now that the package exists
+    } catch (e, st) {
+      report('FAILED: $e');
+      debugPrint('FairPlay demo auto-import failed: $e\n$st');
     }
   }
 
