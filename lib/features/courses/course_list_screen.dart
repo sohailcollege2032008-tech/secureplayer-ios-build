@@ -1,10 +1,12 @@
-import 'dart:io' show Platform;
+import 'dart:io' show File, Platform;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/version_info.dart';
@@ -15,9 +17,34 @@ import '../quiz/quiz_provider.dart';
 import 'announcements_provider.dart';
 import 'courses_provider.dart';
 import 'enrolled_courses_provider.dart';
+import 'fairplay_importer.dart';
 import 'sec_file_intent_service.dart';
 import 'sec_importer.dart';
 import 'widgets/announcement_banner.dart';
+
+// App Store / TestFlight reviewer & DRM-tester demo account. Ported from the
+// whitelabel-full-only pattern (Mashrou3 Dactoor's App Store reviewer
+// account) to this base branch, generalized to the "SecurePlayer" identity.
+// A real Firebase Auth account, genuinely enrolled in a real demo
+// course/lecture — the ONLY thing gated on this email is which bundled
+// FairPlay asset gets auto-imported, nothing about security is relaxed for
+// it (same device binding, same enrollment check as any other account).
+const String kFairplayDemoAccountEmail = 'screenshot.demo@secureplayer.test';
+
+// Downloaded at runtime (NOT a bundled Flutter asset) — a real FairPlay
+// package is ~200+ MB, well over GitHub's 100 MB file size limit, so it
+// can't live in this repo at all. Hosted in a dedicated public-read GCS
+// bucket instead (stud-future-platform-db-demo-assets — separate from the
+// project's actual course content, which is never cloud-hosted). Built via
+// encryptor/fairplay_packager.py + fairplay_bundle_builder.py against
+// D:\Medicine 1\dr ninga\Anatomy Identify.mp4 (this repo's existing E2E test
+// video), lectureId/courseId "fairplay_demo_001", content id
+// "fairplay_demo_001_video_01". Its key is already published to
+// course_keys/fairplay_demo_001.fairplay_videos.video_01 in Firestore.
+// Fails soft (see _autoImportFairplayDemo) if the download fails for any
+// reason, rather than crashing the course list.
+const String kFairplayDemoAssetUrl =
+    'https://storage.googleapis.com/stud-future-platform-db-demo-assets/demo_lecture.secfp';
 
 class CourseListScreen extends ConsumerStatefulWidget {
   const CourseListScreen({super.key});
@@ -44,7 +71,40 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
         },
         fireImmediately: true,
       );
+      if (Platform.isIOS &&
+          FirebaseAuth.instance.currentUser?.email == kFairplayDemoAccountEmail) {
+        _autoImportFairplayDemo();
+      }
     });
+  }
+
+  // Reviewer/DRM-tester convenience — see kFairplayDemoAccountEmail. Checks
+  // the (known, hardcoded — this exact content was built specifically as
+  // this demo) lecture/video IDs BEFORE downloading anything, so a repeat
+  // login after the first successful import never re-downloads the
+  // 200+ MB bundle. Fails soft at every step — never blocks the course
+  // list from rendering normally.
+  Future<void> _autoImportFairplayDemo() async {
+    const lectureId = 'fairplay_demo_001';
+    const videoId = 'video_01';
+    try {
+      if (await FairplayImporter.isAlreadyImported(lectureId, videoId)) {
+        return;
+      }
+
+      final response = await http.get(Uri.parse(kFairplayDemoAssetUrl));
+      if (response.statusCode != 200) return;
+
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/demo_lecture.secfp');
+      await tempFile.writeAsBytes(response.bodyBytes, flush: true);
+
+      await FairplayImporter.importFromPath(tempFile.path);
+      await tempFile.delete().catchError((_) => tempFile);
+    } catch (_) {
+      // Best-effort convenience feature — never blocks the course list from
+      // rendering normally if it fails for any reason.
+    }
   }
 
   @override

@@ -35,6 +35,7 @@ import '../../core/services/pdf_page_cache.dart';
 import '../../features/auth/auth_providers.dart';
 import '../../features/quiz/quiz_provider.dart';
 import '../../local_server/server_provider.dart';
+import '../../security_layer/fairplay/fairplay_service.dart';
 import '../../security_layer/runtime_guard/security_guard_gate.dart';
 import '../../security_layer/runtime_guard/security_guard_state.dart';
 import '../../security_layer/runtime_guard/security_runtime_guard_mixin.dart';
@@ -108,6 +109,12 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
   final Map<String, double> _pdfProgressMap = {};
   Map<String, String> _fileIvMap = {};
   String _courseDir = '';
+  String? _courseId;
+  // iOS only — whether this video has an already-imported FairPlay package
+  // (see security_layer/fairplay/fairplay_service.dart). Resolved eagerly in
+  // initState, before the player watch in build() can possibly call
+  // _initPlayer(), so the branch there never races an unresolved check.
+  bool _fairplayPackageAvailable = false;
 
   // ── Custom controls ───────────────────────────────────────────────────────
   bool _controlsVisible = true;
@@ -164,6 +171,15 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
     WidgetsBinding.instance.addObserver(this);
     startSecurityGuard();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Resolved first (and awaited) so it's settled well before the
+      // videoServerProvider watch in build() can trigger _initPlayer() —
+      // that provider's own startup (ADB check, isolate warmup, secure
+      // storage read, HTTP bind) is slower than this local file check, but
+      // there's no hard synchronization between the two beyond ordering.
+      if (Platform.isIOS) {
+        _fairplayPackageAvailable =
+            await FairplayService.hasLocalPackage(widget.lectureId, widget.videoId);
+      }
       await _loadSavedPosition();
       await _loadFiles();
       await _loadTriggeredPopups();
@@ -246,6 +262,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
       final meta =
           jsonDecode(await metaFile.readAsString()) as Map<String, dynamic>;
       _courseDir = '${appDir.path}/courses/${widget.lectureId}';
+      _courseId = meta['course_id'] as String?;
       final rawIvMap = meta['file_iv_map'] as Map<String, dynamic>? ?? {};
       _fileIvMap = rawIvMap.map((k, v) => MapEntry(k, v as String));
       final rawFiles = meta['files'] as List? ?? [];
@@ -357,8 +374,56 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
       return;
     }
 
-    // ── Android: better_player ────────────────────────────────────────────
+    // ── iOS with an imported FairPlay package: AVContentKeySession path ────
+    // Bypasses the shelf-server URL/token entirely — FairPlay content is
+    // read from a local file:// HLS package and decrypted by the OS's own
+    // secure video path, not by this app. See fairplay_service.dart.
+    if (Platform.isIOS && _fairplayPackageAvailable) {
+      _initFairplayPlayer();
+      return;
+    }
+
+    // ── Android (and iOS without a FairPlay package): better_player ────────
     _initAndroidPlayer(hlsUrl, sessionToken);
+  }
+
+  void _initFairplayPlayer() {
+    FairplayService.buildDataSource(
+      lectureId: widget.lectureId,
+      videoId: widget.videoId,
+      courseId: _courseId ?? widget.lectureId,
+    ).then((dataSource) {
+      if (!mounted || _controller != null) return;
+
+      _controller = BetterPlayerController(
+        BetterPlayerConfiguration(
+          autoPlay: true,
+          looping: false,
+          allowedScreenSleep: false,
+          fullScreenByDefault: false,
+          aspectRatio: widget.initialAspectRatio,
+          handleLifecycle: false,
+          autoDispose: false,
+          controlsConfiguration: BetterPlayerControlsConfiguration(
+            playerTheme: BetterPlayerTheme.custom,
+            customControlsBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+        ),
+        betterPlayerDataSource: dataSource,
+      );
+
+      _controller!.addEventsListener(_onPlayerEvent);
+      _resetHideTimer();
+      _progressTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        _checkPopupTrigger,
+      );
+      if (mounted) setState(() {});
+    }).catchError((Object e) {
+      if (mounted) {
+        setState(() => _playerErrorMessage = 'FairPlay playback failed: $e');
+      }
+    });
   }
 
   void _startWindowsPlayer(String hlsUrl, String sessionToken) {

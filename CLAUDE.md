@@ -62,3 +62,35 @@ Apple App Review needs sign-in credentials, and their environment has no Telegra
 ## Theme Centralization — DONE 2026-07-23 (`whitelabel-full` + `whitelabel-visual` only, not `main`)
 
 `lib/app/theme.dart`'s `AppTheme` class already had a real `ThemeData` wired into `MaterialApp`, but its color constants were private (`_primary`/`_background`/`_surface`) and no screen actually consumed them — every screen hardcoded its own `Color(0xFFxxxxxx)` literal instead. Made them public, added a 4th (`secondaryAccent`, canonicalizing an existing `0xFF9C95FF`/`0xFF9C94FF` typo split), then mechanically swapped every hardcoded literal across ~33 files for the matching `AppTheme.*` reference (scripted replace + import insertion, `flutter analyze` confirmed clean on both branches). Pure refactor, zero visual change. **Re-theming this brand (e.g. to match the Mashrou3 Dactoor logo) is now a 4-constant edit in `lib/app/theme.dart`** — no color value has actually been changed yet, only the plumbing. Deliberately not applied to `main` — user chose shipping speed over "every future brand inherits it" architecture.
+
+## iOS FairPlay DRM (added 2026-07-30, `main` branch only)
+
+Built to fix the actual reason Apple rejected this app: `ScreenProtectionPlugin.swift`'s screen-recording blackout ran with no real DRM behind it. See `secure` repo's own `CLAUDE.md` ("iOS FairPlay DRM System" section) for the full backend architecture (KSM, Cloud Functions, packaging pipeline) — this section covers only what lives in *this* repo.
+
+### What changed here
+- **`vendor/better_player_plus/`** — a local fork of the `better_player_plus` pub package (pubspec.yaml now points at `path: vendor/better_player_plus` instead of the pub.dev version). Upstream's FairPlay support (`BetterPlayerEzDrmAssetsLoaderDelegate.swift`) is streaming-only; this fork adds `FairplayContentKeyManager.swift` / `FairplayContentKeyDelegate.swift` — a real `AVContentKeySession` + persistable-offline-key implementation adapted directly from **Apple's own official sample** (`Development/Client/HLS Catalog With FPS/` inside the FairPlay Streaming Server SDK, not written from scratch). A new `offlineFairplayConfig` field (JSON string: `ksmProxyUrl`, `idToken`, `lectureId`, `videoId`, `courseId`, `deviceId`) was threaded through the *entire* Dart→native chain (`BetterPlayerDrmConfiguration` → `BetterPlayerDataSource` → `DataSource` → `method_channel_video_player.dart` → `SwiftBetterPlayerPlugin.swift` → `BetterPlayer.swift`) to trigger the new path instead of the legacy one. Android side of the fork is untouched.
+- **`lib/security_layer/fairplay/fairplay_service.dart`** — builds that `offlineFairplayConfig` JSON, resolves the bundled FPS application certificate (`assets/fairplay/fps_certificate.bin` — Osama's real production cert; safe to bundle, it's public data, the private key never leaves the KSM) to a real file path, checks whether a video has already been imported locally.
+- **`lib/features/courses/fairplay_importer.dart`** — imports a `.secfp` bundle (native `flutter_archive` extraction, same as `SecImporter`, never the pure-Dart `archive` package for the actual extraction — only for the small `peekMetadata` JSON read).
+- **`lib/features/video_player/video_player_screen.dart`** — one small, isolated branch inside `_initPlayer`: if iOS **and** a FairPlay package already exists locally for this lecture/video, play via the new `_initFairplayPlayer()` path (local `file://` HLS, no shelf-server involvement for the video itself — FairPlay content is served as-is, decrypted entirely by the OS). Every other case (Android, Windows, or an iOS lecture with no FairPlay package) falls through to the existing, completely unmodified `_initAndroidPlayer` path.
+- **`lib/features/courses/course_list_screen.dart`** — auto-import mechanism ported from the `whitelabel-full`-only reviewer-demo pattern, generalized: if the signed-in user's email is `kFairplayDemoAccountEmail`, silently import the bundled `assets/demo/demo_lecture.secfp` on login. Fails soft (no crash, no visible error) if the asset or import fails for any reason.
+
+### The demo/test account
+```
+Email:    screenshot.demo@secureplayer.test
+Password: Bgyh8nh8s8FZ7DGi
+```
+A real Firebase Auth account (uid `ofN8y2OeUKg1Vu4q024jhzudM5j1`), genuinely enrolled (`enrollments/ofN8y2OeUKg1Vu4q024jhzudM5j1_fairplay_demo_001`, `is_active: true`) in a real course/lecture (`courses/fairplay_demo_001`, `lectures/fairplay_demo_001`). No security bypass of any kind — same device-binding, same enrollment check as any real student account, exactly like the existing Mashrou3 Dactoor reviewer account's own design principle. The lecture's video is this repo's own `Anatomy Identify.mp4` test video, genuinely packaged with FairPlay (Shaka Packager, real production credentials) and genuinely uploaded to `course_keys/fairplay_demo_001.fairplay_videos.video_01` in Firestore.
+
+On first login with this account on iOS, the app should silently import `assets/demo/demo_lecture.secfp` and show one course with one lecture, ready to tap and play — no manual `.sec`-file-tap step needed.
+
+### ⚠️ What is and isn't verified
+
+Everything **except the native Swift layer** was independently verified against real infrastructure this session: the self-hosted KSM answered real Apple test SPCs correctly (including the offline/non-expiring case), both Cloud Functions are live and deployed, the `.secfp` bundle was built from a real video and its manifest matches Apple's HLS+FairPlay spec exactly (`METHOD=SAMPLE-AES`, `KEYFORMAT="com.apple.streamingkeydelivery"`), and every Dart file in this repo (including the vendored fork) passes `flutter analyze` clean project-wide.
+
+**The Swift code itself (`FairplayContentKeyManager.swift`, `FairplayContentKeyDelegate.swift`, and the `BetterPlayer.swift` changes) has never been compiled by Xcode or run on any device or simulator.** No Mac was available. It was adapted as closely as possible from Apple's own tested reference implementation specifically to minimize that risk, but "adapted carefully" is not the same as "verified." Before this can be trusted:
+
+1. A real Xcode build (Codemagic's `ios-unsigned-build` or `ios-simulator-build` on `main` will surface any Swift-level compile error `flutter analyze` can't catch — this is the first real signal).
+2. A real device install + login as the demo account above + play the auto-imported lecture — confirms the whole chain end to end, including whether screen recording actually blacks out (the entire point of this work).
+3. Report back specifically: did it play at all, did the license fetch succeed on first play, did it still play after force-quitting and reopening with the device offline (the actual "import once, play forever offline" claim), and did screen recording show black.
+
+Do not conflate "the app built successfully" with "DRM works" — those are two different, sequential things to confirm.
