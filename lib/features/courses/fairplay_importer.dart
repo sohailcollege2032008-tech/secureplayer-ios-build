@@ -57,6 +57,17 @@ class FairplayImporter {
   /// of patching every call site that checks for it — keeps this fix in
   /// one place and makes FairPlay imports indistinguishable from .sec
   /// imports to every OTHER screen that only cares "is it imported".
+  ///
+  /// Must be a genuine format_version "2.1" document (not just some marker
+  /// string) with a real `videos` list, because localCoursesProvider
+  /// (courses_provider.dart) parses that list into one CourseMetadata per
+  /// video — an earlier version of this marker omitted `videos` entirely,
+  /// which made every video parse as videoId="" and get classified
+  /// isFileOnly=true (CourseMetadata.isFileOnly: segmentCount==0 &&
+  /// videoId.isEmpty), so CourseDetailScreen rendered only the empty
+  /// "Files & Materials" section with no video row to tap — the lecture
+  /// looked imported but had nothing playable in it. Caught on the second
+  /// real test run, right after the first (isImported) bug was fixed.
   static Future<void> _writeCompatibilityMarker(
     String lectureId,
     Map<String, dynamic> metadata,
@@ -67,16 +78,39 @@ class FairplayImporter {
     // Never overwrite a REAL .sec import's metadata (richer content: actual
     // file attachments, real file_iv_map) if this same lectureId happens to
     // also have one — this marker only needs to exist, its own content is
-    // never otherwise read for a genuinely FairPlay lecture.
-    if (await markerFile.exists()) return;
+    // never otherwise read for a genuinely FairPlay lecture. Self-heals an
+    // earlier broken marker shape that omitted `videos` entirely (see the
+    // class doc above): a lectureId reaching FairplayImporter always came
+    // from a real .secfp bundle, which always has >=1 video by construction
+    // (server.py rejects an empty video list at export time), so an
+    // existing marker with an empty `videos` list can only be that old
+    // broken shape, never a legitimate file-only .sec lecture — safe to
+    // overwrite in that one case, left alone otherwise.
+    if (await markerFile.exists()) {
+      try {
+        final existing =
+            jsonDecode(await markerFile.readAsString()) as Map<String, dynamic>;
+        final existingVideos = existing['videos'] as List? ?? [];
+        if (existingVideos.isNotEmpty) return;
+      } catch (_) {
+        return; // unreadable/foreign file — don't touch it
+      }
+    }
     await courseDir.create(recursive: true);
+    final videos = (metadata['videos'] as List? ?? [])
+        .map((v) => {'id': v['id'], 'title': v['title'] ?? ''})
+        .toList();
     await markerFile.writeAsString(jsonEncode({
-      'format_version': '1.0-fairplay-marker',
+      'format_version': '2.1',
       'lecture_id': lectureId,
       'course_id': metadata['course_id'] ?? lectureId,
       'title': metadata['title'] ?? lectureId,
+      'teacher_uid': metadata['teacher_uid'] ?? '',
+      'created_at': metadata['created_at'] ?? DateTime.now().toIso8601String(),
+      'total_duration_seconds': 0,
       'file_iv_map': <String, String>{},
       'files': <Map<String, dynamic>>[],
+      'videos': videos,
     }));
   }
 
@@ -99,4 +133,29 @@ class FairplayImporter {
   /// imported" means.
   static Future<bool> isAlreadyImported(String lectureId, String videoId) =>
       FairplayService.hasLocalPackage(lectureId, videoId);
+
+  /// Re-runs _writeCompatibilityMarker for an already-extracted package,
+  /// without re-downloading or re-extracting anything. Needed because
+  /// course_list_screen.dart's auto-import flow skips importFromPath
+  /// entirely once isAlreadyImported is true (correctly — no reason to
+  /// re-fetch a 200+ MB bundle on every login), which means a device that
+  /// already extracted a package under the old broken marker shape would
+  /// otherwise never get the self-heal in _writeCompatibilityMarker to run
+  /// again. The bundle's own top-level metadata.json is already sitting on
+  /// disk from the original extraction (fairplay_lectures/{lectureId}/
+  /// metadata.json — same layout importFromPath extracts into), so this is
+  /// just a cheap local JSON read, no network involved.
+  static Future<void> ensureCompatibilityMarker(String lectureId) async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final metaFile =
+        File('${appDir.path}/fairplay_lectures/$lectureId/metadata.json');
+    if (!await metaFile.exists()) return;
+    try {
+      final metadata =
+          jsonDecode(await metaFile.readAsString()) as Map<String, dynamic>;
+      await _writeCompatibilityMarker(lectureId, metadata);
+    } catch (_) {
+      // Corrupt/foreign metadata.json — nothing safe to do here.
+    }
+  }
 }

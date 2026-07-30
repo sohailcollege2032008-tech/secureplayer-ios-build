@@ -99,7 +99,12 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
     try {
       report('checking local package…');
       if (await FairplayImporter.isAlreadyImported(lectureId, videoId)) {
+        // Cheap local self-heal (no re-download): repairs the marker if an
+        // earlier app version wrote the broken shape. See
+        // FairplayImporter.ensureCompatibilityMarker's own doc.
+        await FairplayImporter.ensureCompatibilityMarker(lectureId);
         report('already imported — skipping');
+        if (mounted) setState(() {});
         return;
       }
 
