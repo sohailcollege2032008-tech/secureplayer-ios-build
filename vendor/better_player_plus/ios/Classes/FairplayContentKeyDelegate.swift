@@ -173,7 +173,7 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
     }
 
     public func contentKeySession(_ session: AVContentKeySession, shouldRetry keyRequest: AVContentKeyRequest,
-                                   reason retryReason: AVContentKeyRequestRetryReason) -> Bool {
+                                   reason retryReason: AVContentKeyRequest.RetryReason) -> Bool {
         switch retryReason {
         case .timedOut, .receivedResponseWithExpiredLease, .receivedObsoleteContentKey:
             return true
