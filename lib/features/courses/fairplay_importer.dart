@@ -38,7 +38,40 @@ class FairplayImporter {
       destinationDir: destDir,
     );
 
+    await _writeCompatibilityMarker(lectureId, metadata);
+
     return lectureId;
+  }
+
+  /// Every "is this lecture imported?" check across the app (course lecture
+  /// list's lock icon AND tap-gating, video_player_screen.dart's courseId
+  /// lookup) is keyed off ONE thing: whether
+  /// getApplicationSupportDirectory()/courses/{lectureId}/metadata.json
+  /// exists — the .sec format's own marker, checked in ~4 separate places
+  /// in enrolled_courses_provider.dart. A FairPlay-only import (no
+  /// accompanying .sec) never touches that path or that directory at all
+  /// by design (see the class doc), so without this, a successfully
+  /// imported FairPlay lecture stays permanently shown as locked and
+  /// un-tappable — this is exactly the bug that showed up on the first
+  /// real test. Writing a minimal, compatible metadata.json here — instead
+  /// of patching every call site that checks for it — keeps this fix in
+  /// one place and makes FairPlay imports indistinguishable from .sec
+  /// imports to every OTHER screen that only cares "is it imported".
+  static Future<void> _writeCompatibilityMarker(
+    String lectureId,
+    Map<String, dynamic> metadata,
+  ) async {
+    final supportDir = await getApplicationSupportDirectory();
+    final courseDir = Directory('${supportDir.path}/courses/$lectureId');
+    await courseDir.create(recursive: true);
+    await File('${courseDir.path}/metadata.json').writeAsString(jsonEncode({
+      'format_version': '1.0-fairplay-marker',
+      'lecture_id': lectureId,
+      'course_id': metadata['course_id'] ?? lectureId,
+      'title': metadata['title'] ?? lectureId,
+      'file_iv_map': <String, String>{},
+      'files': <Map<String, dynamic>>[],
+    }));
   }
 
   /// Reads only metadata.json from the bundle without extracting segments —
