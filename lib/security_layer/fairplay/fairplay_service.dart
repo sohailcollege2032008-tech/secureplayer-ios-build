@@ -54,6 +54,33 @@ class FairplayService {
     return File('${dir.path}/master.m3u8').exists();
   }
 
+  /// Reads the owning courseId out of the extracted package's own
+  /// metadata.json.
+  ///
+  /// Deliberately NOT taken from the caller's widget state: courseId was
+  /// previously threaded in from video_player_screen's `_courseId`, which is
+  /// populated by an async `_loadFiles()` running two awaits deep in a
+  /// post-frame callback, with no synchronization against the separate
+  /// provider chain that triggers playback. Losing that race silently
+  /// substituted lectureId for courseId, and since getFairplayLicense looks
+  /// up `enrollments/{uid}_{courseId}`, the request would fail the
+  /// enrollment check rather than fail loudly. The bundle's own metadata is
+  /// authoritative and already on disk before playback can begin.
+  static Future<String> _courseIdFor(String lectureId) async {
+    final root = await _fairplayLecturesRoot();
+    final metaFile = File('${root.path}/$lectureId/metadata.json');
+    if (!await metaFile.exists()) {
+      throw StateError('FairPlay package for $lectureId has no metadata.json');
+    }
+    final metadata =
+        jsonDecode(await metaFile.readAsString()) as Map<String, dynamic>;
+    final courseId = metadata['course_id'] as String?;
+    if (courseId == null || courseId.isEmpty) {
+      throw StateError('FairPlay metadata for $lectureId has no course_id');
+    }
+    return courseId;
+  }
+
   /// Copies the bundled FPS application certificate (public data — the
   /// private key never leaves the KSM) from the Flutter asset bundle to a
   /// real file the native AVContentKeySessionDelegate can read via
@@ -86,7 +113,6 @@ class FairplayService {
   static Future<BetterPlayerDataSource> buildDataSource({
     required String lectureId,
     required String videoId,
-    required String courseId,
     required int port,
     required String token,
   }) async {
@@ -106,6 +132,7 @@ class FairplayService {
     }
     final deviceId = await DeviceIdUtil.getDeviceId();
     final certPath = await resolveCertificateFilePath();
+    final courseId = await _courseIdFor(lectureId);
 
     final config = jsonEncode({
       'ksmProxyUrl': _ksmProxyUrl,

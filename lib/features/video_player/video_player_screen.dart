@@ -109,7 +109,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
   final Map<String, double> _pdfProgressMap = {};
   Map<String, String> _fileIvMap = {};
   String _courseDir = '';
-  String? _courseId;
   // iOS only — whether this video has an already-imported FairPlay package
   // (see security_layer/fairplay/fairplay_service.dart). Resolved eagerly in
   // initState, before the player watch in build() can possibly call
@@ -262,7 +261,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
       final meta =
           jsonDecode(await metaFile.readAsString()) as Map<String, dynamic>;
       _courseDir = '${appDir.path}/courses/${widget.lectureId}';
-      _courseId = meta['course_id'] as String?;
       final rawIvMap = meta['file_iv_map'] as Map<String, dynamic>? ?? {};
       _fileIvMap = rawIvMap.map((k, v) => MapEntry(k, v as String));
       final rawFiles = meta['files'] as List? ?? [];
@@ -394,7 +392,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
     FairplayService.buildDataSource(
       lectureId: widget.lectureId,
       videoId: widget.videoId,
-      courseId: _courseId ?? widget.lectureId,
       port: port,
       token: sessionToken,
     ).then((dataSource) {
