@@ -18,6 +18,7 @@ import 'package:shelf/shelf.dart';
 /// Android/Windows-style double-decryption — that assumption about
 /// AVFoundation itself was wrong, not the manifest format.
 Future<Response> fairplayStaticHandler(
+  Request request,
   String lectureId,
   String videoId,
   String filename,
@@ -62,10 +63,50 @@ Future<Response> fairplayStaticHandler(
     );
   }
 
+  // Media segments (fMP4 init + .m4s). AVPlayer is far stricter than
+  // ExoPlayer here: it issues byte-range requests against fMP4 segments and
+  // expects a real Content-Length, so the naive `Response.ok(file.openRead())`
+  // this originally used — which sends chunked encoding with no length and
+  // ignores Range entirely — made AVPlayer fail with a bare "Cannot Open".
+  // Every other handler in this server already sets Content-Length
+  // explicitly; this one just also has to answer Range properly.
+  final length = await file.length();
+  final rangeHeader = request.headers['range'];
+
+  if (rangeHeader != null && rangeHeader.startsWith('bytes=')) {
+    final spec = rangeHeader.substring(6).split('-');
+    final start = spec[0].isEmpty ? 0 : int.tryParse(spec[0]) ?? 0;
+    final end = (spec.length > 1 && spec[1].isNotEmpty)
+        ? (int.tryParse(spec[1]) ?? length - 1)
+        : length - 1;
+
+    if (start >= length || start < 0 || end < start) {
+      return Response(
+        416, // Range Not Satisfiable
+        headers: {'Content-Range': 'bytes */$length'},
+      );
+    }
+
+    final clampedEnd = end >= length ? length - 1 : end;
+    return Response(
+      206, // Partial Content
+      body: file.openRead(start, clampedEnd + 1),
+      headers: {
+        'Content-Type': 'video/mp4',
+        'Content-Length': '${clampedEnd - start + 1}',
+        'Content-Range': 'bytes $start-$clampedEnd/$length',
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'no-store',
+      },
+    );
+  }
+
   return Response.ok(
     file.openRead(),
-    headers: const {
+    headers: {
       'Content-Type': 'video/mp4',
+      'Content-Length': '$length',
+      'Accept-Ranges': 'bytes',
       'Cache-Control': 'no-store',
     },
   );

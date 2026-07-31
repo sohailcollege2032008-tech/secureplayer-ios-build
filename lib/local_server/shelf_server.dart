@@ -43,6 +43,7 @@ Handler buildShelfHandler({
       (Request req, String lid, String vid, String filename) async {
     if (!_isValidTokenOrParam(req, sessionToken)) return Response.forbidden('');
     return fairplayStaticHandler(
+      req,
       Uri.decodeComponent(lid),
       Uri.decodeComponent(vid),
       Uri.decodeComponent(filename),
