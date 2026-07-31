@@ -25,18 +25,38 @@ const _debugShowSecurityFlagInsteadOfBlackout =
 /// itself is shared (see [securityRuntimeGuardProvider]), only this gate
 /// widget is per-screen.
 class SecurityGuardGate extends ConsumerWidget {
-  const SecurityGuardGate({super.key, required this.child});
+  const SecurityGuardGate({
+    super.key,
+    required this.child,
+    this.suppressTransientHold = false,
+  });
 
   final Widget child;
+
+  // Set true only for iOS FairPlay video playback. HDMI/recording/focus-loss
+  // transient holds exist to react to screen capture on platforms where this
+  // app's own custom logic is the only thing enforcing it (Android
+  // FLAG_SECURE, Windows WDA_EXCLUDEFROMCAPTURE) — for FairPlay content, the
+  // OS's own HDCP-enforced secure video path already blacks out recordings
+  // automatically at the hardware level, with zero app involvement needed.
+  // Layering this custom pause-and-blackout behavior on top is not just
+  // redundant, it's the exact pattern Apple rejected the app for in the
+  // first place (denying a system capability without it being a side effect
+  // of real content protection). Real violations (jailbreak/root/Frida/ADB)
+  // are a separate, still-fully-legitimate concern unrelated to screen
+  // capture and are never suppressed by this flag.
+  final bool suppressTransientHold;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(securityRuntimeGuardProvider);
     return switch (state) {
       SecurityGuardClear() => child,
-      SecurityGuardTransientHold() => _debugShowSecurityFlagInsteadOfBlackout
-          ? _DebugSecurityFlagBanner(child: child)
-          : const SecurityTransientBlackout(),
+      SecurityGuardTransientHold() => suppressTransientHold
+          ? child
+          : (_debugShowSecurityFlagInsteadOfBlackout
+              ? _DebugSecurityFlagBanner(child: child)
+              : const SecurityTransientBlackout()),
       SecurityGuardViolation(:final reason) =>
         SecurityBlockScreen(reason: reason),
     };

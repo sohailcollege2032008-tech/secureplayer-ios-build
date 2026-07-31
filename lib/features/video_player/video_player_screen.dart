@@ -1207,9 +1207,19 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
     // Every cause that used to be tracked separately here (HDMI, recording,
     // plus ADB/root/Frida/focus-loss) is now unified in one guard state —
     // pause on anything but clear, auto-resume the instant it clears again.
+    // Exception: FairPlay video never pauses for a transient hold (HDMI/
+    // recording/focus-loss) — the OS's own HDCP-enforced secure decode path
+    // already blacks out recordings automatically with zero app involvement,
+    // so pausing on top of that is both redundant and the exact "custom
+    // screen-capture response" pattern Apple rejected the app for. Real
+    // violations (jailbreak/root/Frida/ADB) still pause FairPlay video too —
+    // those are a separate, still-legitimate concern.
     ref.listen<SecurityGuardState>(securityRuntimeGuardProvider, (previous, next) {
+      final isFairplayVideo = Platform.isIOS && _fairplayPackageAvailable;
       if (next is SecurityGuardClear) {
         if (previous != null && previous is! SecurityGuardClear) _playerPlay();
+      } else if (isFairplayVideo && next is SecurityGuardTransientHold) {
+        // no-op — let the OS's own protection handle it silently
       } else {
         _playerPause();
       }
@@ -1219,6 +1229,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
       backgroundColor: Colors.black,
       // No AppBar — back button lives inside the custom controls overlay.
       body: SecurityGuardGate(
+        suppressTransientHold: Platform.isIOS && _fairplayPackageAvailable,
         child: serverAsync.when(
           loading: () => _spinner('Starting player...'),
           error: (err, _) => _buildErrorState(_formatError(err)),
