@@ -38,9 +38,40 @@ class FairplayImporter {
       destinationDir: destDir,
     );
 
+    await _discardPersistedContentKeys(lectureId);
     await _writeCompatibilityMarker(lectureId, metadata);
 
     return lectureId;
+  }
+
+  /// Deletes any FairPlay content key this device already persisted for
+  /// this lecture.
+  ///
+  /// Every re-export from Studio generates a brand new content key and IV
+  /// (see fairplay_packager.package_fairplay_hls) and overwrites the
+  /// Firestore entry, so the bytes arriving here are encrypted under a key
+  /// the device may not have. But FairplayContentKeyDelegate.swift
+  /// short-circuits on `persistableContentKeyExistsOnDisk` and reuses the
+  /// cached key without revalidating it, and nothing else in the app ever
+  /// removes one — not lecture deletion, not re-import. A stale key would
+  /// therefore be applied to freshly-encrypted content and fail to decrypt,
+  /// looking exactly like broken DRM.
+  ///
+  /// This is a production bug, not just a testing nuisance: a teacher
+  /// re-publishing a lecture would break playback for every student who had
+  /// already watched it, with no way to recover short of reinstalling.
+  /// Keys are named "{lectureId}_{videoId}-Key" (the skd:// asset id), so
+  /// every video belonging to this lecture is matched by prefix.
+  static Future<void> _discardPersistedContentKeys(String lectureId) async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final keyDir = Directory('${appDir.path}/.fairplay_keys');
+    if (!await keyDir.exists()) return;
+    await for (final entry in keyDir.list()) {
+      if (entry is! File) continue;
+      if (entry.uri.pathSegments.last.startsWith('${lectureId}_')) {
+        await entry.delete();
+      }
+    }
   }
 
   /// Every "is this lecture imported?" check across the app (course lecture
