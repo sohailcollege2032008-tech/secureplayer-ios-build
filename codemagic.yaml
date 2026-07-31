@@ -151,7 +151,24 @@ workflows:
           xcode-project use-profiles
       - name: Flutter build ipa and code sign
         script: |
+          # Build number is stamped here, not read from pubspec.yaml.
+          # App Store Connect rejects any upload whose build number isn't
+          # strictly higher than the previous one, and hand-editing
+          # pubspec.yaml kept going stale — several distinct code states
+          # shipped under the same number before this was automated, and
+          # the number had to be corrected by hand after the fact.
+          #
+          # The offset is load-bearing: the main `secure` repo derives its
+          # build number from git commit count alone, but that does NOT
+          # port here. This repo's commit count (~44) is far BELOW the
+          # numbers already uploaded manually (up to 138), so a raw count
+          # would move the build number backwards and be rejected. Starting
+          # above that manual history keeps it monotonic forever, and it
+          # still increments on its own with every commit.
+          BUILD_NUMBER=$((200 + $(git rev-list --count HEAD)))
+          echo "Stamping build number $BUILD_NUMBER"
           flutter build ipa --release \
+            --build-number=$BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
