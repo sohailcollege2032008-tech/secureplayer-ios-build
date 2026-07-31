@@ -17,11 +17,13 @@ This repo follows the same base → brand-fork pattern used for the whole Secure
 
 | Branch | Role | Bundle ID | Notes |
 |---|---|---|---|
-| `main` | **Base, unbranded SecurePlayer** | `com.secureplayer.securePlayer` | Display name "Secure Player". Any new brand forks from here. |
+| `main` | **Base, unbranded SecurePlayer** | `com.mashrou3dactoor.player` (⚠️ see below) | Display name "Secure Player" — branding stays generic even though the bundle ID doesn't. Any new brand forks from here. |
 | `whitelabel-full` | Mashrou3 Dactoor — **production** | `com.mashrou3dactoor.player` | Full feature set: account deletion, privacy consent, App Info. No test bypasses. This is what gets handed off for a real App Store Connect build. |
 | `whitelabel-visual` | Mashrou3 Dactoor — **cloud-testing/demo only** | `com.mashrou3dactoor.player` | Lighter branch (no account deletion/consent code). Has `SKIP_DEVICE_CHECK` / `AUTO_IMPORT_DEMO` dart-define flags baked into some Codemagic build commands — **never use this branch's build output for anything except Appetize/BrowserStack/Codemagic App Preview cloud testing.** |
 
-A change that's brand-agnostic (a real bug fix, a security fix, a base feature) belongs on `main` first, then gets manually ported to the brand branches. A change that's brand-specific (bundle ID, contact info, demo account) only ever goes on the brand branches.
+A change that's brand-agnostic (a real bug fix, a security fix, a base feature) belongs on `main` first, then gets manually ported to the brand branches. A change that's brand-specific (contact info, demo account) only ever goes on the brand branches.
+
+**⚠️ `main`'s bundle ID (2026-07-31):** Originally `com.secureplayer.securePlayer` — a deliberate, separate App ID specifically so every future white-label brand could share one already-FairPlay-approved base app instead of each needing its own Apple FairPlay Streaming (FPS) certificate approval (see the FairPlay DRM section below). **Reverted to `com.mashrou3dactoor.player`** at the account owner's explicit decision, because Apple does not allow changing an App Store Connect app's bundle ID after creation, and Osama's existing Mashrou3 Dactoor app (already submitted, in review) would have had to be abandoned for a brand-new App Store Connect app + a second review from zero to keep the original identity. Traded off deliberately: `main` now ships under the same underlying bundle ID/App Store Connect app as `whitelabel-full`, but keeps its own visible branding (name "Secure Player", icon) — bundle ID and display name are independent to Apple, so this is a legitimate, supported configuration, not a hack. The "one shared base app for future brands" plan is deferred, not deleted: a genuinely separate App ID can still be registered later if a brand-agnostic listing becomes worth the setup cost. `lib/firebase_options.dart`'s iOS block and `codemagic.yaml`'s `ios-app-store-release` workflow were updated to match — both now intentionally reuse `whitelabel-full`'s exact Firebase iOS app registration and Codemagic `mashrou3_asc` integration, not a separate one.
 
 ## Security Layer (iOS-specific)
 

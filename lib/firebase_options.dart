@@ -27,13 +27,19 @@ class DefaultFirebaseOptions {
     storageBucket: 'stud-future-platform-db.firebasestorage.app',
   );
 
+  // Reuses whitelabel-full's iOS Firebase app registration (same bundle ID,
+  // com.mashrou3dactoor.player — see codemagic.yaml's ios-app-store-release
+  // workflow doc for why: Osama's existing App Store Connect app can't have
+  // its bundle ID changed once created, so this branch's own iOS build
+  // reuses that same identity instead of registering a new one, while the
+  // visible app name/branding stays "Secure Player" — see Info.plist.
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBgIMJLNUmnUaWO-apL4KHpuiScj07i3e0',
-    appId: '1:312422331227:ios:f43224410040837f49e07e',
+    appId: '1:312422331227:ios:f194408a2d4cac3b49e07e',
     messagingSenderId: '312422331227',
     projectId: 'stud-future-platform-db',
     storageBucket: 'stud-future-platform-db.firebasestorage.app',
-    iosBundleId: 'com.secureplayer.securePlayer',
+    iosBundleId: 'com.mashrou3dactoor.player',
   );
 
   // Registered as "teacher_studio (windows)" web app in Firebase Console
