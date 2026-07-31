@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -295,7 +297,9 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen>
             ),
         ],
       ),
+      // See file_viewer_screen.dart's SecurityGuardGate comment.
       body: SecurityGuardGate(
+        suppressTransientHold: Platform.isIOS,
         child: switch (_view) {
           _ViewState.loading => const Center(
               child: CircularProgressIndicator(color: Color(0xFF6C63FF))),

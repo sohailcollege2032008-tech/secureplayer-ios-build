@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -436,7 +438,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
             ),
         ],
       ),
+      // See file_viewer_screen.dart's SecurityGuardGate comment — no
+      // OS-level equivalent to FairPlay for non-video content on iOS, so
+      // the custom blackout is suppressed there rather than risk the same
+      // rejection reason Apple already gave once, on a different screen.
       body: SecurityGuardGate(
+        suppressTransientHold: Platform.isIOS,
         child: layoutMode == QuizLayoutMode.scrollAll
           ? QuizScrollLayout(
               quiz: widget.quiz,

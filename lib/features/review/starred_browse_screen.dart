@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -187,7 +189,9 @@ class _StarredBrowseScreenState extends ConsumerState<StarredBrowseScreen>
           ),
         ],
       ),
+      // See file_viewer_screen.dart's SecurityGuardGate comment.
       body: SecurityGuardGate(
+        suppressTransientHold: Platform.isIOS,
         child: QuizNavGestureWrapper(
           enabled: settings.swipeNavigationEnabled,
           onNext: _goNext,

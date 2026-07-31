@@ -154,7 +154,15 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen>
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ),
+      // iOS has no OS-level "protect this from screen recording" mechanism
+      // for non-video content the way FairPlay does for video — the only
+      // way to react here at all is this same custom app-level blackout
+      // Apple already rejected the app for once (video, no real DRM behind
+      // it). Suppressing it here rather than risk the identical rejection
+      // reason on a different screen; Android/Windows keep full protection
+      // (FLAG_SECURE/WDA_EXCLUDEFROMCAPTURE — no App Store review to trip).
       body: SecurityGuardGate(
+        suppressTransientHold: Platform.isIOS,
         child: widget.isEncrypted ? _buildEncryptedBody() : _buildLegacyBody(),
       ),
     );
