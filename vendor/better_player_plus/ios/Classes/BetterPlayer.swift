@@ -193,6 +193,8 @@ public class BetterPlayer: NSObject, FlutterPlatformView, FlutterStreamHandler, 
                 // Offline/persistable FairPlay path — AVContentKeySession, NOT the
                 // legacy resource-loader delegate below (that path is streaming-only
                 // and cannot produce a key that survives across playback sessions).
+                FairplayDiagnostics.reset()
+                FairplayDiagnostics.log("FairPlay asset setup for \(url.absoluteString)")
                 if let certURL = URL(string: certificateUrl),
                    let configData = offlineFairplayConfigJson.data(using: .utf8),
                    let config = try? JSONSerialization.jsonObject(with: configData) as? [String: String] {
@@ -201,6 +203,20 @@ public class BetterPlayer: NSObject, FlutterPlatformView, FlutterStreamHandler, 
                         requestConfig: config
                     )
                     FairplayContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
+                    FairplayDiagnostics.log(
+                        "registered asset with AVContentKeySession "
+                        + "(lecture=\(config["lectureId"] ?? "?") video=\(config["videoId"] ?? "?") "
+                        + "course=\(config["courseId"] ?? "?"))"
+                    )
+                } else {
+                    // Silent here previously: a bad cert URL or malformed config
+                    // JSON meant the asset was never registered for key delivery
+                    // at all, and playback failed with no indication why.
+                    FairplayDiagnostics.log(
+                        "SETUP FAILED: certURL parsed=\(URL(string: certificateUrl) != nil), "
+                        + "config parsed=\(((try? JSONSerialization.jsonObject(with: Data(offlineFairplayConfigJson.utf8))) as? [String: String]) != nil) "
+                        + "— asset NOT registered with AVContentKeySession"
+                    )
                 }
             } else if let certificateUrl = certificateUrl, !certificateUrl.isEmpty {
                 let certURL = URL(string: certificateUrl)

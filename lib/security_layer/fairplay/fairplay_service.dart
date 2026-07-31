@@ -54,6 +54,20 @@ class FairplayService {
     return File('${dir.path}/master.m3u8').exists();
   }
 
+  /// Reads back the native FairPlay key-exchange log (written by
+  /// FairplayDiagnostics.swift in the vendored better_player_plus fork).
+  ///
+  /// The device under test belongs to a third party whose logs we cannot
+  /// pull, and AVFoundation reports every FairPlay failure as the single
+  /// word "Cannot Open", so the only way to see which stage actually failed
+  /// is to show it inside the app. Returns empty if nothing was recorded.
+  static Future<String> readDiagnostics() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final logFile = File('${appDir.path}/fairplay_diagnostics.log');
+    if (!await logFile.exists()) return '';
+    return (await logFile.readAsString()).trim();
+  }
+
   /// Reads the owning courseId out of the extracted package's own
   /// metadata.json.
   ///

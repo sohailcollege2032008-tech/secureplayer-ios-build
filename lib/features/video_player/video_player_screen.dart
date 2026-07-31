@@ -560,6 +560,16 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
         final msg =
             event.parameters?['exception']?.toString() ?? 'Playback error';
         if (mounted) setState(() => _playerErrorMessage = msg);
+        // AVFoundation collapses every FairPlay failure into a single
+        // uninformative string ("Cannot Open"). The native side records what
+        // actually happened at each stage; pull it in so the error screen
+        // shows the real cause instead of the symptom.
+        if (Platform.isIOS && _fairplayPackageAvailable) {
+          FairplayService.readDiagnostics().then((diagnostics) {
+            if (!mounted || diagnostics.isEmpty) return;
+            setState(() => _playerErrorMessage = '$msg\n\n--- FairPlay log ---\n$diagnostics');
+          });
+        }
       default:
         break;
     }
@@ -1776,17 +1786,21 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
     return 'Failed to start video server: $err';
   }
 
-  Widget _buildErrorState(String message) => Center(
+  Widget _buildErrorState(String message) => SingleChildScrollView(
+        // Scrollable because the message can now carry the native FairPlay
+        // log, which is many lines and would otherwise overflow off-screen
+        // on a phone — the whole point is that it can be read and screenshotted.
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const SizedBox(height: 48),
               const Icon(Icons.error_outline_rounded,
                   color: Colors.redAccent, size: 56),
               const SizedBox(height: 16),
-              Text(message,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+              SelectableText(message,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                   textAlign: TextAlign.center),
               const SizedBox(height: 24),
               ElevatedButton.icon(

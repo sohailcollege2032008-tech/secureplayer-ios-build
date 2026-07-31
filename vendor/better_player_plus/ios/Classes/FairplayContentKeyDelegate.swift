@@ -137,7 +137,9 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
         var resultData: Data?
         var resultError: Error?
 
+        var httpStatus = -1
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            httpStatus = (response as? HTTPURLResponse)?.statusCode ?? -1
             if let error = error {
                 resultError = error
             } else {
@@ -146,9 +148,16 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
             semaphore.signal()
         }
         task.resume()
-        _ = semaphore.wait(timeout: .now() + 25)
+        let waitResult = semaphore.wait(timeout: .now() + 25)
+        if waitResult == .timedOut {
+            FairplayDiagnostics.log("KSM request TIMED OUT after 25s for \(assetID)")
+        }
 
         if let resultError = resultError {
+            FairplayDiagnostics.log(
+                "KSM request errored for \(assetID): "
+                + FairplayDiagnostics.describe(resultError)
+            )
             throw resultError
         }
         guard let resultData = resultData,
@@ -157,8 +166,15 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
               let ckcBase64 = result["ckc"] as? String,
               let ckcData = Data(base64Encoded: ckcBase64) else {
             let raw = String(data: resultData ?? Data(), encoding: .utf8) ?? "<no body>"
+            FairplayDiagnostics.log(
+                "KSM returned no usable CKC for \(assetID) (HTTP \(httpStatus)): "
+                + raw.prefix(300)
+            )
             throw FairplayError.noCkcReturnedByKsm(raw)
         }
+        FairplayDiagnostics.log(
+            "KSM returned CKC for \(assetID) (HTTP \(httpStatus), \(ckcData.count) bytes)"
+        )
         return ckcData
     }
 
@@ -183,30 +199,47 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
     }
 
     public func contentKeySession(_ session: AVContentKeySession, contentKeyRequest keyRequest: AVContentKeyRequest, didFailWithError err: Error) {
-        // Nothing to clean up here — the completion/error path in
-        // handlePersistableContentKeyRequest already handles per-request state.
+        // This is AVFoundation's own verdict on the key request and the single
+        // most useful signal in the whole flow — it was previously discarded,
+        // leaving "Cannot Open" as the only visible symptom.
+        FairplayDiagnostics.log("KEY REQUEST FAILED: \(FairplayDiagnostics.describe(err))")
     }
 
     func handleStreamingContentKeyRequest(keyRequest: AVContentKeyRequest) {
         guard let contentKeyIdentifierString = keyRequest.identifier as? String,
               let contentKeyIdentifierURL = URL(string: contentKeyIdentifierString),
               let assetIDString = contentKeyIdentifierURL.host else {
+            FairplayDiagnostics.log(
+                "ABORT: could not parse assetID from identifier "
+                + "\(String(describing: keyRequest.identifier)) — a skd:// host that "
+                + "URL(string:) rejects (underscores/case) would land here"
+            )
             keyRequest.processContentKeyResponseError(FairplayError.invalidRequestConfig)
             return
         }
+
+        FairplayDiagnostics.log("key request received for assetID=\(assetIDString)")
 
         // Every asset in this app is offline-persistable — always request the
         // persistable variant. Falls back to a plain (online) key only if the
         // platform refuses (e.g. an AirPlay session, per Apple's own sample).
         do {
             try keyRequest.respondByRequestingPersistableContentKeyRequestAndReturnError()
+            FairplayDiagnostics.log("requested PERSISTABLE key for \(assetIDString)")
         } catch {
+            FairplayDiagnostics.log(
+                "persistable key request REFUSED, falling back to online key: "
+                + FairplayDiagnostics.describe(error)
+            )
             provideOnlineKey(keyRequest: keyRequest, assetID: assetIDString)
         }
     }
 
     private func provideOnlineKey(keyRequest: AVContentKeyRequest, assetID: String) {
-        guard let assetIDData = assetID.data(using: .utf8) else { return }
+        guard let assetIDData = assetID.data(using: .utf8) else {
+            FairplayDiagnostics.log("ABORT: assetID not UTF-8 encodable: \(assetID)")
+            return
+        }
         do {
             let applicationCertificate = try requestApplicationCertificate()
             keyRequest.makeStreamingContentKeyRequestData(
@@ -256,15 +289,22 @@ extension FairplayContentKeyDelegate {
         if persistableContentKeyExistsOnDisk(withContentKeyIdentifier: assetIDString) {
             let url = urlForPersistableContentKey(withContentKeyIdentifier: assetIDString)
             if let contentKey = FileManager.default.contents(atPath: url.path) {
+                FairplayDiagnostics.log(
+                    "reusing PERSISTED key on disk for \(assetIDString) "
+                    + "(\(contentKey.count) bytes) — no network"
+                )
                 let response = AVContentKeyResponse(fairPlayStreamingKeyResponseData: contentKey)
                 keyRequest.processContentKeyResponse(response)
                 return
             }
-            // Persisted file went missing/corrupt — fall through and re-request.
+            FairplayDiagnostics.log("persisted key file unreadable, re-requesting")
         }
 
         do {
             let applicationCertificate = try requestApplicationCertificate()
+            FairplayDiagnostics.log(
+                "loaded FPS certificate (\(applicationCertificate.count) bytes), building SPC"
+            )
             keyRequest.makeStreamingContentKeyRequestData(
                 forApp: applicationCertificate,
                 contentIdentifier: assetIDData,
@@ -272,18 +312,35 @@ extension FairplayContentKeyDelegate {
             ) { [weak self] spcData, error in
                 guard let self = self else { return }
                 if let error = error {
+                    FairplayDiagnostics.log(
+                        "SPC generation FAILED: " + FairplayDiagnostics.describe(error)
+                    )
                     keyRequest.processContentKeyResponseError(error)
                     return
                 }
-                guard let spcData = spcData else { return }
+                guard let spcData = spcData else {
+                    FairplayDiagnostics.log("SPC generation returned no data and no error")
+                    return
+                }
+                FairplayDiagnostics.log("SPC built (\(spcData.count) bytes), calling KSM")
                 do {
                     let ckcData = try self.requestContentKeyFromKeySecurityModule(spcData: spcData, assetID: assetIDString)
                     let persistentKey = try keyRequest.persistableContentKey(fromKeyVendorResponse: ckcData, options: nil)
+                    FairplayDiagnostics.log(
+                        "converted CKC to persistable key (\(persistentKey.count) bytes)"
+                    )
                     try self.writePersistableContentKey(contentKey: persistentKey, withContentKeyIdentifier: assetIDString)
+                    FairplayDiagnostics.log("persisted key written to disk, responding to AVFoundation")
 
                     let response = AVContentKeyResponse(fairPlayStreamingKeyResponseData: persistentKey)
                     keyRequest.processContentKeyResponse(response)
                 } catch {
+                    // Covers the KSM call, the CKC->persistable conversion (which
+                    // fails if the CKC was not issued for offline use), and the
+                    // disk write — previously indistinguishable from each other.
+                    FairplayDiagnostics.log(
+                        "persistable key flow FAILED: " + FairplayDiagnostics.describe(error)
+                    )
                     keyRequest.processContentKeyResponseError(error)
                 }
             }
