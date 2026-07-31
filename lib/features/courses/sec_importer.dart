@@ -19,6 +19,7 @@ import '../../core/services/firestore_rest.dart';
 import '../../core/utils/device_id_util.dart';
 import '../../local_server/decryption/iv_map_crypto.dart';
 import '../../security_layer/secure_storage/secure_storage_service.dart';
+import 'fairplay_importer.dart';
 
 enum ImportPhase { pickingFile, extracting, fetchingKey, securing, done }
 
@@ -122,6 +123,24 @@ class SecImporter {
       throw const ImportException('No file selected.');
     }
     final secPath = result.files.single.path!;
+
+    // .secfp (FairPlay, iOS-only) is a completely different, incompatible
+    // format from .sec — same ZIP container, unrelated metadata.json shape
+    // (format_version "1.0-fairplay", no video_id/segment_count fields the
+    // rest of this importer expects). FileType.any means the file picker
+    // doesn't filter by extension, so without this check a .secfp silently
+    // fell through to _importV1's legacy parsing path (format_version
+    // doesn't match "2.0"/"2.1"), which called getCourseKey with the wrong
+    // id and failed with a confusing "Lecture key not found" — this was
+    // the only way to import a real (non-demo) FairPlay lecture at all, so
+    // routing it correctly here, rather than adding a second confusing
+    // button, is the actual fix.
+    if (secPath.toLowerCase().endsWith('.secfp')) {
+      report(const ImportProgress(phase: ImportPhase.extracting));
+      final lectureId = await FairplayImporter.importFromPath(secPath);
+      report(const ImportProgress(phase: ImportPhase.done));
+      return lectureId;
+    }
 
     // ── 2. Connectivity check ─────────────────────────────────────────────────
     final connectivity = await Connectivity().checkConnectivity();
