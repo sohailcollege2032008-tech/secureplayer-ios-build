@@ -1,8 +1,12 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../../features/quiz/quiz_history_service.dart';
+import '../../security_layer/secure_storage/secure_storage_service.dart';
 
 
 class AppDrawer extends ConsumerWidget {
@@ -111,6 +115,15 @@ class AppDrawer extends ConsumerWidget {
                 FirebaseAuth.instance.signOut();
               },
             ),
+            _DrawerTile(
+              icon: Icons.delete_forever_rounded,
+              label: 'Delete Account',
+              color: Colors.redAccent.withValues(alpha: 0.7),
+              onTap: () {
+                Navigator.of(context).pop();
+                _confirmAndDeleteAccount(context, ref);
+              },
+            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -201,6 +214,73 @@ Future<void> _launchUrl(String urlString) async {
   if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
     throw Exception('Could not launch $urlString');
   }
+}
+
+// Apple Guideline 5.1.1(v): an app that supports account creation must
+// also offer an in-app way to delete the account. Ported from
+// whitelabel-full, where this was already built and working — main never
+// had it, an oversight caught during pre-submission review, not something
+// deliberately deferred.
+Future<void> _confirmAndDeleteAccount(BuildContext context, WidgetRef ref) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: const Color(0xFF1A1A2E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text(
+        'Delete Account',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
+      content: const Text(
+        'This permanently deletes your account, enrollments, and all '
+        'locally downloaded course data. This cannot be undone.',
+        style: TextStyle(color: Colors.white70),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+  if (!context.mounted) return;
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const Center(
+      child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+    ),
+  );
+
+  try {
+    await FirebaseFunctions.instanceFor(region: 'us-central1')
+        .httpsCallable('deleteMyAccount')
+        .call();
+    await ref.read(quizHistoryServiceProvider).clearAll();
+    await SecureStorageService().deleteAll();
+  } catch (e) {
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop(); // close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete account: $e')),
+      );
+    }
+    return;
+  }
+
+  if (context.mounted) {
+    Navigator.of(context, rootNavigator: true).pop(); // close loading dialog
+  }
+  // Router redirects to /login automatically once this completes, same as
+  // the plain Sign Out tile above.
+  await FirebaseAuth.instance.signOut();
 }
 
 void _showAboutDialog(BuildContext context) {

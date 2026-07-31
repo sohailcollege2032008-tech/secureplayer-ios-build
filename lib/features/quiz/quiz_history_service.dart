@@ -141,6 +141,13 @@ class QuizHistoryService {
     );
     return rows.map(LocalQuizAttempt.fromMap).toList();
   }
+
+  // Used on account deletion — no attempt history is meaningful once the
+  // account it belongs to no longer exists.
+  Future<void> clearAll() async {
+    final db = await _database;
+    await db.delete('quiz_attempts');
+  }
 }
 
 final quizHistoryServiceProvider =
