@@ -33,14 +33,22 @@ void check(bool ok, String label, [String detail = '']) {
 }
 
 void main() {
+  // Needs a real .secfp, which is deliberately not committed (they are large
+  // and contain encrypted course content). Skipped unless one is supplied, so
+  // a plain `flutter test` stays green for anyone who does not have one:
+  //   flutter test test/fairplay_serve_check_test.dart --dart-define=SECFP=<path>
+  const secfpPath = String.fromEnvironment('SECFP');
   test('FairPlay static route serves a real .secfp end to end', () async {
-    final args = [const String.fromEnvironment('SECFP')];
-    await _run(args);
-  }, timeout: const Timeout(Duration(minutes: 3)));
+    await _run([secfpPath]);
+  },
+      timeout: const Timeout(Duration(minutes: 3)),
+      skip: secfpPath.isEmpty
+          ? 'set --dart-define=SECFP=<path to a .secfp> to run'
+          : null);
 }
 
 Future<void> _run(List<String> args) async {
-  if (args.isEmpty) {
+  if (args.isEmpty || args.first.isEmpty) {
     fail('pass --dart-define=SECFP=<path>');
   }
 
