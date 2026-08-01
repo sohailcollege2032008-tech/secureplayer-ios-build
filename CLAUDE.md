@@ -103,7 +103,7 @@ FairPlay-encrypted video decrypts and plays on real hardware, and **iOS itself r
 
 That detail is the whole point of this project: the app does nothing to cause it. `SecurityGuardGate.suppressTransientHold` deliberately disables this codebase's own custom blackout for FairPlay video, so the block is purely iOS refusing to hand frames from FairPlay's hardware-protected path to the capture pipeline. That is exactly the distinction the original rejection turned on — denying a system capability is acceptable only as a *side effect of real content protection*, not as app behaviour. It is now demonstrable, not argued.
 
-**Still unverified: offline playback.** Nobody has yet played a lecture, force-quit, gone into airplane mode, and reopened it. That is the "import once, watch forever" claim and the reason the licence must be persistent rather than streaming — worth testing before relying on it.
+**Offline playback confirmed too (2026-08-01).** A lecture plays after force-quit with the device offline, which verifies the persisted key actually survives across sessions — the "import once, watch forever" claim, and the reason the licence had to be persistent rather than streaming. That was the last unverified claim in the FairPlay chain; every part of it is now confirmed on real hardware rather than reasoned about.
 
 ### Real bugs found via actual test runs, all fixed (2026-07-30)
 The first real Simulator test (via Codemagic App Preview) showed the demo lecture permanently locked. Root-caused by tracing, not guessing — this took three rounds, each surfaced only after the previous fix was retested:
