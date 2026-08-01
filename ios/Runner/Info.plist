@@ -61,19 +61,24 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<!-- file_picker and webview_flutter link photo-library/camera/location
-	     capable code on iOS even though this app never actually invokes
-	     those capabilities itself — Apple's automated binary scan flags any
-	     linked capability regardless of whether app logic calls it, and
-	     rejects the build without a matching usage string. Descriptions
-	     below are written to be honest about that (no camera capture, no
-	     location feature, no profile photo upload anywhere in this app),
-	     rather than describing features that don't exist. -->
+	<!-- Only the photo-library string is declared, and it describes a real
+	     feature: attaching an image to a question in a personal quiz
+	     (personal_quiz_editor_screen.dart's _pickImage).
+	     Camera and location strings were deliberately removed. Nothing on
+	     iOS uses either: there is no camera or location API anywhere in the
+	     Dart code, and the in-app HTML viewer that could theoretically
+	     request them via WebKit has no iOS code path at all
+	     (html_file_viewer.dart branches only on Platform.isWindows /
+	     Platform.isAndroid). The previous strings said, in effect, "the app
+	     does not use this" — exactly the vague, non-committal phrasing
+	     Guideline 5.1.1(i) rejects, and declaring capabilities the app never
+	     exercises also invites avoidable reviewer scrutiny and complicates
+	     the App Privacy questionnaire.
+	     If a future upload ever returns ITMS-90683 naming one of these keys,
+	     that is an upload-validation message that names the exact key and is
+	     fixed in minutes — a far cheaper failure than a review rejection
+	     over an unconvincing purpose string. -->
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>يستخدم التطبيق منتقي الملفات لاختيار واستيراد ملف الكورس (.sec) من جهازك.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>لا يستخدم التطبيق الكاميرا مباشرة، لكن المتصفح المدمج بداخله قد يطلب هذا الإذن إذا تطلب أحد المحتويات المعروضة ذلك.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>لا يستخدم التطبيق تحديد الموقع مباشرة، لكن المتصفح المدمج بداخله قد يطلب هذا الإذن إذا تطلب أحد المحتويات المعروضة ذلك.</string>
+	<string>Lets you choose an image from your device to attach to a question in your own personal quiz. Images stay on your device.</string>
 </dict>
 </plist>

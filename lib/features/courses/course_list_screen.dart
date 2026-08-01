@@ -43,8 +43,13 @@ const String kFairplayDemoAccountEmail = 'screenshot.demo@secureplayer.test';
 // course_keys/fairplay_demo_001.fairplay_videos.video_01 in Firestore.
 // Fails soft (see _autoImportFairplayDemo) if the download fails for any
 // reason, rather than crashing the course list.
+// v2 was re-packaged 2026-08-01. The original was built before two fixes
+// that a reviewer would have hit directly: the audio rendition was marked
+// DEFAULT=NO (video played silently) and Shaka's default 5s clear_lead left
+// the opening segments unencrypted. It was also 216 MB, downloaded on first
+// login — slow enough to risk stalling during review. v2 is 12.8 MB.
 const String kFairplayDemoAssetUrl =
-    'https://storage.googleapis.com/stud-future-platform-db-demo-assets/demo_lecture.secfp';
+    'https://storage.googleapis.com/stud-future-platform-db-demo-assets/demo_lecture_v2.secfp';
 
 class CourseListScreen extends ConsumerStatefulWidget {
   const CourseListScreen({super.key});
@@ -510,15 +515,6 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'developed by Dr. Sohail Ahmed',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
                   // Shows exactly which git commit this build is from, so a
                   // stale install is visible at a glance instead of assumed
                   // to be current (an "+dirty" suffix means uncommitted

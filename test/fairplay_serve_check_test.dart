@@ -1,3 +1,6 @@
+// ignore_for_file: avoid_print, prefer_interpolation_to_compose_strings
+//
+// Printing IS the point here — this harness reports each check to stdout.
 // Live end-to-end check of the FairPlay static route against a real .secfp.
 //
 // Runs the ACTUAL production handler (buildShelfHandler) over a real
