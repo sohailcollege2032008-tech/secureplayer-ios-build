@@ -137,6 +137,16 @@ class WebviewSession extends ChangeNotifier {
       try {
         await android.clearCache();
       } catch (_) {}
+      // clearCache() alone does NOT remove localStorage — verified against
+      // webview_flutter_wkwebview 3.25.1, where clearCache() removes only
+      // memoryCache/diskCache/offlineWebApplicationCache, and localStorage
+      // is a separate WebsiteDataType reachable only via clearLocalStorage().
+      // localStorage is exactly what this whole feature persists (quiz
+      // answers), so without this call a shared device would hand the next
+      // student the previous student's stored state after logout.
+      try {
+        await android.clearLocalStorage();
+      } catch (_) {}
       try {
         await WebViewCookieManager().clearCookies();
       } catch (_) {}
