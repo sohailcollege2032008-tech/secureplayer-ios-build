@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/models/announcement_model.dart';
 import '../announcements_provider.dart';
+import '../dismissed_announcements_provider.dart';
 
 class AnnouncementBannerList extends ConsumerWidget {
   const AnnouncementBannerList({super.key});
@@ -33,7 +34,7 @@ class AnnouncementBannerList extends ConsumerWidget {
   }
 }
 
-class AnnouncementCard extends StatefulWidget {
+class AnnouncementCard extends ConsumerStatefulWidget {
   const AnnouncementCard({super.key, required this.announcement, this.lectureTitle});
 
   final AnnouncementModel announcement;
@@ -43,15 +44,21 @@ class AnnouncementCard extends StatefulWidget {
   final String? lectureTitle;
 
   @override
-  State<AnnouncementCard> createState() => AnnouncementCardState();
+  ConsumerState<AnnouncementCard> createState() => AnnouncementCardState();
 }
 
-class AnnouncementCardState extends State<AnnouncementCard> {
+class AnnouncementCardState extends ConsumerState<AnnouncementCard> {
   bool _expanded = false;
 
   bool get _isExpandable {
     final body = widget.announcement.body;
     return body.length > 150 || body.contains('\n');
+  }
+
+  void _dismiss() {
+    ref
+        .read(dismissedAnnouncementsProvider.notifier)
+        .dismiss(widget.announcement.id);
   }
 
   @override
@@ -68,7 +75,7 @@ class AnnouncementCardState extends State<AnnouncementCard> {
           left: BorderSide(color: accent, width: 3.5),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -85,6 +92,17 @@ class AnnouncementCardState extends State<AnnouncementCard> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+              ),
+              // Small dismiss X — hides this banner permanently (persisted
+              // on the device, see dismissed_announcements_provider.dart).
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 16),
+                color: Colors.white30,
+                tooltip: 'Dismiss',
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.all(6),
+                constraints: const BoxConstraints(),
+                onPressed: _dismiss,
               ),
             ],
           ),

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/announcement_model.dart';
 import '../../core/services/firestore_rest.dart';
+import 'dismissed_announcements_provider.dart';
 
 // Single one-shot fetch of every active, unexpired announcement (global and
 // lecture-scoped alike). Previously this was a 30s poll that never disposed
@@ -31,18 +32,24 @@ final activeAnnouncementsProvider =
 /// Global banner feed shown above the courses list — excludes lecture-scoped
 /// update notices, which render on their own lecture's card instead (see
 /// [lectureAnnouncementsProvider]). Derived, not fetched — no extra reads.
+/// Banners the student dismissed with the X are filtered out permanently.
 final announcementsProvider =
     Provider.autoDispose<AsyncValue<List<AnnouncementModel>>>((ref) {
+  final dismissed = ref.watch(dismissedAnnouncementsProvider);
   return ref
       .watch(activeAnnouncementsProvider)
-      .whenData((list) => list.where((a) => a.lectureId == null).toList());
+      .whenData((list) => list
+          .where((a) => a.lectureId == null && !dismissed.contains(a.id))
+          .toList());
 });
 
 /// Update notices scoped to one lecture — filtered client-side from
 /// [activeAnnouncementsProvider]'s single fetch. No per-card network call.
+/// Dismissed notices stay hidden.
 final lectureAnnouncementsProvider = Provider.autoDispose
     .family<AsyncValue<List<AnnouncementModel>>, String>((ref, lectureId) {
-  return ref
-      .watch(activeAnnouncementsProvider)
-      .whenData((list) => list.where((a) => a.lectureId == lectureId).toList());
+  final dismissed = ref.watch(dismissedAnnouncementsProvider);
+  return ref.watch(activeAnnouncementsProvider).whenData((list) => list
+      .where((a) => a.lectureId == lectureId && !dismissed.contains(a.id))
+      .toList());
 });
