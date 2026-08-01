@@ -49,10 +49,13 @@ Future<File> exportQuizToAnki(
       options: question.options,
       correctIndex: question.correctIndex,
       explanation: question.explanation,
+      explanation2: question.explanation2,
       questionDirection:
           question.questionDirectionOverride ?? quiz.questionDirection,
       explanationDirection:
           question.explanationDirectionOverride ?? quiz.explanationDirection,
+      explanation2Direction: question.explanation2DirectionOverride ??
+          quiz.explanation2Direction,
       imageBytes: images[question.id],
       source: quiz.title,
     );

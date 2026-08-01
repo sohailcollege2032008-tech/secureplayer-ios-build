@@ -89,10 +89,13 @@ Future<AggregateExportResult<File>> exportReviewQuestionsToAnki(
       options: rq.question.options,
       correctIndex: rq.question.correctIndex,
       explanation: rq.question.explanation,
+      explanation2: rq.question.explanation2,
       questionDirection:
           rq.question.questionDirectionOverride ?? rq.quizQuestionDirection,
       explanationDirection: rq.question.explanationDirectionOverride ??
           rq.quizExplanationDirection,
+      explanation2Direction: rq.question.explanation2DirectionOverride ??
+          rq.quizExplanation2Direction,
       imageBytes: imageBytes,
       source: deckName,
     );
@@ -209,6 +212,8 @@ pw.Widget _buildAggregateQuestion(
       rq.question.questionDirectionOverride ?? rq.quizQuestionDirection));
   final explanationDir = toPdfDirection(_parseDirection(
       rq.question.explanationDirectionOverride ?? rq.quizExplanationDirection));
+  final explanation2Dir = toPdfDirection(_parseDirection(
+      rq.question.explanation2DirectionOverride ?? rq.quizExplanation2Direction));
 
   return buildQuestionPdfBlock(
     question: rq.question,
@@ -216,6 +221,7 @@ pw.Widget _buildAggregateQuestion(
     variant: variant,
     questionDir: questionDir,
     explanationDir: explanationDir,
+    explanation2Dir: explanation2Dir,
     imageBytes: imagesByQuestionId[rq.question.id],
   );
 }

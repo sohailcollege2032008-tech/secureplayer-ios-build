@@ -253,52 +253,100 @@ class _QuizModalState extends ConsumerState<QuizModal> {
 
   Widget _buildFeedback() {
     final isCorrect = _selectedOption == _currentQuestion.correctIndex;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isCorrect
-            ? Colors.green.withValues(alpha: 0.1)
-            : Colors.orange.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
+    // Apply the authored explanation direction explicitly — without this the
+    // explanation silently renders in the ambient (RTL) direction even when
+    // the teacher set LTR.
+    final explanationDir =
+        widget.quiz.effectiveExplanationDirection(_currentQuestion);
+    final explanation2Dir =
+        widget.quiz.effectiveExplanation2Direction(_currentQuestion);
+    final explanation2 = _currentQuestion.explanation2;
+
+    return Directionality(
+      textDirection: explanationDir,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
           color: isCorrect
-              ? Colors.greenAccent.withValues(alpha: 0.3)
-              : Colors.orange.withValues(alpha: 0.3),
+              ? Colors.green.withValues(alpha: 0.1)
+              : Colors.orange.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isCorrect
+                ? Colors.greenAccent.withValues(alpha: 0.3)
+                : Colors.orange.withValues(alpha: 0.3),
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                isCorrect ? Icons.check_circle : Icons.info_outline,
-                color: isCorrect ? Colors.greenAccent : Colors.orangeAccent,
-                size: 18,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                isCorrect ? 'Correct!' : 'Incorrect',
-                style: TextStyle(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  isCorrect ? Icons.check_circle : Icons.info_outline,
                   color: isCorrect ? Colors.greenAccent : Colors.orangeAccent,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isCorrect ? 'Correct!' : 'Incorrect',
+                  style: TextStyle(
+                    color: isCorrect
+                        ? Colors.greenAccent
+                        : Colors.orangeAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            if (_currentQuestion.explanation.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                _currentQuestion.explanation,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 13,
+                  height: 1.4,
                 ),
               ),
             ],
-          ),
-          if (_currentQuestion.explanation.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              _currentQuestion.explanation,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 13,
-                height: 1.4,
+            if (explanation2.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                height: 1,
+                color: Colors.white12,
               ),
-            ),
+              const SizedBox(height: 8),
+              Directionality(
+                textDirection: explanation2Dir,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Additional Explanation',
+                      style: TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      explanation2,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

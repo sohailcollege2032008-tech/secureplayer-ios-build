@@ -7,9 +7,11 @@ class QuizQuestion {
     required this.options,
     required this.correctIndex,
     required this.explanation,
+    this.explanation2 = '',
     this.imageId = '',
     this.questionDirectionOverride,
     this.explanationDirectionOverride,
+    this.explanation2DirectionOverride,
   });
 
   final String id;
@@ -17,6 +19,9 @@ class QuizQuestion {
   final List<String> options;
   final int correctIndex;
   final String explanation;
+  // Second, optional explanation field with its own independent direction
+  // (2026-08 feature). Empty = not authored; old .sec files simply lack it.
+  final String explanation2;
   // References an encrypted image bundled in the .sec under files/{imageId}.
   // Empty means the question has no image. Never a local/disk path — bytes
   // are fetched in-memory from the shelf server, same as PDFs.
@@ -26,6 +31,7 @@ class QuizQuestion {
   // than reading these directly.
   final String? questionDirectionOverride;
   final String? explanationDirectionOverride;
+  final String? explanation2DirectionOverride;
 
   bool get hasImage => imageId.isNotEmpty;
 
@@ -35,11 +41,14 @@ class QuizQuestion {
         options: List<String>.from(json['options'] as List),
         correctIndex: json['correct_index'] as int,
         explanation: json['explanation'] as String? ?? '',
+        explanation2: json['explanation2'] as String? ?? '',
         imageId: json['image_id'] as String? ?? '',
         questionDirectionOverride:
             json['question_direction_override'] as String?,
         explanationDirectionOverride:
             json['explanation_direction_override'] as String?,
+        explanation2DirectionOverride:
+            json['explanation2_direction_override'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -48,11 +57,14 @@ class QuizQuestion {
         'options': options,
         'correct_index': correctIndex,
         'explanation': explanation,
+        if (explanation2.isNotEmpty) 'explanation2': explanation2,
         if (imageId.isNotEmpty) 'image_id': imageId,
         if (questionDirectionOverride != null)
           'question_direction_override': questionDirectionOverride,
         if (explanationDirectionOverride != null)
           'explanation_direction_override': explanationDirectionOverride,
+        if (explanation2DirectionOverride != null)
+          'explanation2_direction_override': explanation2DirectionOverride,
       };
 }
 
@@ -67,6 +79,7 @@ class Quiz {
     this.triggerAtSecond = 0,
     this.questionDirection = 'rtl',
     this.explanationDirection = 'rtl',
+    this.explanation2Direction = 'rtl',
     this.isGeneralQuiz = false,
     this.exportAllowed = false,
     this.isPersonalQuiz = false,
@@ -80,9 +93,11 @@ class Quiz {
   final String triggerType;
   final int triggerAtSecond;
   // Quiz-level default direction ('ltr' | 'rtl'); individual questions may
-  // override via QuizQuestion.questionDirectionOverride/explanationDirectionOverride.
+  // override via QuizQuestion.questionDirectionOverride/explanationDirectionOverride/
+  // explanation2DirectionOverride.
   final String questionDirection;
   final String explanationDirection;
+  final String explanation2Direction;
   // True only for quizzes imported from a standalone .secquiz collection.
   // Both a lecture-wide quiz and a course-level General Quiz have
   // videoIds.isEmpty, so this is the only way to tell them apart — set only
@@ -115,6 +130,7 @@ class Quiz {
         triggerAtSecond: triggerAtSecond,
         questionDirection: questionDirection,
         explanationDirection: explanationDirection,
+        explanation2Direction: explanation2Direction,
         isGeneralQuiz: isGeneralQuiz ?? this.isGeneralQuiz,
         exportAllowed: exportAllowed,
         isPersonalQuiz: isPersonalQuiz ?? this.isPersonalQuiz,
@@ -124,6 +140,8 @@ class Quiz {
       _parseDirection(q.questionDirectionOverride ?? questionDirection);
   TextDirection effectiveExplanationDirection(QuizQuestion q) =>
       _parseDirection(q.explanationDirectionOverride ?? explanationDirection);
+  TextDirection effectiveExplanation2Direction(QuizQuestion q) =>
+      _parseDirection(q.explanation2DirectionOverride ?? explanation2Direction);
 
   static TextDirection _parseDirection(String value) =>
       value == 'ltr' ? TextDirection.ltr : TextDirection.rtl;
@@ -156,6 +174,8 @@ class Quiz {
       triggerAtSecond: (trigger?['at_second'] as int?) ?? 0,
       questionDirection: json['question_direction'] as String? ?? 'rtl',
       explanationDirection: json['explanation_direction'] as String? ?? 'rtl',
+      explanation2Direction:
+          json['explanation2_direction'] as String? ?? 'rtl',
       exportAllowed: json['export_allowed'] as bool? ?? false,
       questions: (json['questions'] as List? ?? [])
           .map((q) => QuizQuestion.fromJson(q as Map<String, dynamic>))
@@ -170,6 +190,7 @@ class Quiz {
         'title': title,
         'question_direction': questionDirection,
         'explanation_direction': explanationDirection,
+        'explanation2_direction': explanation2Direction,
         'export_allowed': exportAllowed,
         'questions': questions.map((q) => q.toJson()).toList(),
       };

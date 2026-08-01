@@ -88,8 +88,10 @@ class AnkiPackageBuilder {
     required List<String> options,
     required int correctIndex,
     required String explanation,
+    String explanation2 = '',
     required String questionDirection,
     required String explanationDirection,
+    String explanation2Direction = 'rtl',
     Uint8List? imageBytes,
     String imageExtension = '.jpg',
     String source = '',
@@ -120,10 +122,12 @@ class AnkiPackageBuilder {
       jsonEncode(choices), // ChoicesJSON
       correctKey, // CorrectKey
       explanation, // Explanation
+      explanation2, // Explanation2
       imageField, // Image
       source, // Source
       questionDirection, // QuestionDir
       explanationDirection, // ExplanationDir
+      explanation2Direction, // Explanation2Dir
     ];
 
     _notes.add(_PendingNote(

@@ -17,10 +17,12 @@ const List<String> ankiNoteFields = [
   'ChoicesJSON',
   'CorrectKey',
   'Explanation',
+  'Explanation2',
   'Image',
   'Source',
   'QuestionDir',
   'ExplanationDir',
+  'Explanation2Dir',
 ];
 
 const String _sharedCss = r'''
@@ -630,6 +632,10 @@ const String ankiMcqBackTemplate =
     '  <hr class="d62-sep">\n'
     '  <div class="d62-explanation-label">الشرح</div>\n'
     '  <div class="d62-explanation" id="d62-expl" dir="{{ExplanationDir}}">{{Explanation}}</div>\n'
+    '  {{#Explanation2}}\n'
+    '  <div class="d62-explanation-label" style="margin-top:10px">شرح إضافي</div>\n'
+    '  <div class="d62-explanation" id="d62-expl2" dir="{{Explanation2Dir}}">{{Explanation2}}</div>\n'
+    '  {{/Explanation2}}\n'
     '</div>\n'
     '$_brandHtml\n'
     '<script>\n'

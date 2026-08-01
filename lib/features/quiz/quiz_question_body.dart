@@ -43,6 +43,7 @@ class QuizQuestionBody extends ConsumerWidget {
     final styles = QuizTextStyles.forSettings(ref.watch(quizSettingsProvider));
     final questionDir = quiz.effectiveQuestionDirection(question);
     final explanationDir = quiz.effectiveExplanationDirection(question);
+    final explanation2Dir = quiz.effectiveExplanation2Direction(question);
     final starred = showStar &&
         ref.watch(starredProvider(courseId)).isStarred(question.id);
 
@@ -102,6 +103,9 @@ class QuizQuestionBody extends ConsumerWidget {
               explanation: question.explanation,
               titleStyle: styles.feedbackTitleStyle,
               explanationStyle: styles.explanationStyle,
+              explanation2: question.explanation2,
+              explanation2Direction: explanation2Dir,
+              explanation2Style: styles.explanation2Style,
             ),
           ),
         ],
@@ -203,12 +207,18 @@ class _FeedbackBox extends StatelessWidget {
     required this.explanation,
     required this.titleStyle,
     required this.explanationStyle,
+    this.explanation2 = '',
+    this.explanation2Direction = TextDirection.rtl,
+    this.explanation2Style,
   });
 
   final bool isCorrect;
   final String explanation;
   final TextStyle titleStyle;
   final TextStyle explanationStyle;
+  final String explanation2;
+  final TextDirection explanation2Direction;
+  final TextStyle? explanation2Style;
 
   @override
   Widget build(BuildContext context) {
@@ -249,6 +259,46 @@ class _FeedbackBox extends StatelessWidget {
           if (explanation.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(explanation, style: explanationStyle),
+          ],
+          if (explanation2.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              height: 1,
+              color: Colors.white12,
+            ),
+            const SizedBox(height: 10),
+            // Second explanation field with its own independent direction.
+            Directionality(
+              textDirection: explanation2Direction,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.notes_rounded,
+                        color: Colors.white38,
+                        size: 15,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Additional Explanation',
+                        style: titleStyle.copyWith(
+                          color: Colors.white54,
+                          fontSize: (titleStyle.fontSize ?? 14) - 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    explanation2,
+                    style: explanation2Style ?? explanationStyle,
+                  ),
+                ],
+              ),
+            ),
           ],
         ],
       ),

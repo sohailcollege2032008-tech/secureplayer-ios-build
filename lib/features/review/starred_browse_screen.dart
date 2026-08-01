@@ -284,7 +284,16 @@ class _StarredBrowseScreenState extends ConsumerState<StarredBrowseScreen>
   }
 
   Widget _buildExplanation(ReviewQuestion entry, QuizTextStyles styles) {
-    if (entry.question.explanation.isEmpty) return const SizedBox.shrink();
+    final q = entry.question;
+    if (q.explanation.isEmpty && q.explanation2.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    // Apply the authored explanation direction explicitly — without this the
+    // explanation renders in the ambient direction even when set to LTR.
+    final explanationDir = _direction(
+        q.explanationDirectionOverride ?? entry.quizExplanationDirection);
+    final explanation2Dir = _direction(
+        q.explanation2DirectionOverride ?? entry.quizExplanation2Direction);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -292,10 +301,28 @@ class _StarredBrowseScreenState extends ConsumerState<StarredBrowseScreen>
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white12),
       ),
-      child: Text(
-        entry.question.explanation,
-        style: styles.explanationStyle,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (q.explanation.isNotEmpty)
+            Directionality(
+              textDirection: explanationDir,
+              child: Text(q.explanation, style: styles.explanationStyle),
+            ),
+          if (q.explanation2.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(width: double.infinity, height: 1, color: Colors.white12),
+            const SizedBox(height: 10),
+            Directionality(
+              textDirection: explanation2Dir,
+              child: Text(q.explanation2, style: styles.explanation2Style),
+            ),
+          ],
+        ],
       ),
     );
   }
+
+  TextDirection _direction(String value) =>
+      value == 'ltr' ? TextDirection.ltr : TextDirection.rtl;
 }

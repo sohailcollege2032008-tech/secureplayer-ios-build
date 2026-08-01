@@ -121,9 +121,12 @@ class ShuffledQuiz {
       options: shuffledOptions,
       correctIndex: remappedCorrectIndex,
       explanation: origQuestion.explanation,
+      explanation2: origQuestion.explanation2,
       imageId: origQuestion.imageId,
       questionDirectionOverride: origQuestion.questionDirectionOverride,
       explanationDirectionOverride: origQuestion.explanationDirectionOverride,
+      explanation2DirectionOverride:
+          origQuestion.explanation2DirectionOverride,
     );
   }
 }

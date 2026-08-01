@@ -51,6 +51,8 @@ Future<Uint8List> buildQuizPdf(
                 quiz.effectiveQuestionDirection(quiz.questions[i])),
             explanationDir: toPdfDirection(
                 quiz.effectiveExplanationDirection(quiz.questions[i])),
+            explanation2Dir: toPdfDirection(
+                quiz.effectiveExplanation2Direction(quiz.questions[i])),
             imageBytes: imagesByQuestionId[quiz.questions[i].id],
           ),
       ],
@@ -122,6 +124,7 @@ pw.Widget buildQuestionPdfBlock({
   required QuizPdfVariant variant,
   required pw.TextDirection questionDir,
   required pw.TextDirection explanationDir,
+  pw.TextDirection? explanation2Dir,
   Uint8List? imageBytes,
 }) {
   final showAnswers = variant == QuizPdfVariant.solved;
@@ -205,6 +208,23 @@ pw.Widget buildQuestionPdfBlock({
               child: pw.Text(
                 question.explanation,
                 style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey800),
+              ),
+            ),
+          ),
+        ],
+        if (showAnswers && question.explanation2.isNotEmpty) ...[
+          pw.SizedBox(height: 4),
+          pw.Directionality(
+            textDirection: explanation2Dir ?? explanationDir,
+            child: pw.Container(
+              padding: const pw.EdgeInsets.all(8),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.grey200,
+                borderRadius: pw.BorderRadius.circular(6),
+              ),
+              child: pw.Text(
+                question.explanation2,
+                style: const pw.TextStyle(fontSize: 9.5, color: PdfColors.grey700),
               ),
             ),
           ),

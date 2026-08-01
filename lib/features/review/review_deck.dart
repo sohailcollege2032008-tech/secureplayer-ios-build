@@ -25,6 +25,7 @@ class ReviewQuestion {
     this.isPersonalQuiz = false,
     this.quizQuestionDirection = 'rtl',
     this.quizExplanationDirection = 'rtl',
+    this.quizExplanation2Direction = 'rtl',
   });
 
   final QuizQuestion question;
@@ -48,6 +49,7 @@ class ReviewQuestion {
   // free of any direct Flutter/platform-binding import.
   final String quizQuestionDirection;
   final String quizExplanationDirection;
+  final String quizExplanation2Direction;
 
   ReviewQuestion withSrs(SrsRow? row) => ReviewQuestion(
         question: question,
@@ -59,6 +61,7 @@ class ReviewQuestion {
         isPersonalQuiz: isPersonalQuiz,
         quizQuestionDirection: quizQuestionDirection,
         quizExplanationDirection: quizExplanationDirection,
+        quizExplanation2Direction: quizExplanation2Direction,
       );
 }
 
@@ -130,6 +133,7 @@ ReviewDeck buildReviewDeck({
           isPersonalQuiz: quiz.isPersonalQuiz,
           quizQuestionDirection: quiz.questionDirection,
           quizExplanationDirection: quiz.explanationDirection,
+          quizExplanation2Direction: quiz.explanation2Direction,
         );
         if (entry.srs == null) {
           neverSeen.add(entry);

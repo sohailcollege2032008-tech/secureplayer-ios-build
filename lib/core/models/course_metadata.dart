@@ -1,6 +1,12 @@
 enum WatermarkMode { tiled, boldGhost }
 
-enum WatermarkApplyTo { both, videos, files }
+/// Which surfaces the watermark applies to. 'none' = fully clean videos AND
+/// files — the "no watermark anywhere" choice added 2026-08.
+enum WatermarkApplyTo { both, videos, files, none }
+
+/// Video watermark style: the classic 3 moving marks (tiled) or a single
+/// mark that drifts smoothly across the whole frame (animated).
+enum VideoWatermarkStyle { tiled, animated }
 
 class WatermarkConfig {
   const WatermarkConfig({
@@ -12,16 +18,20 @@ class WatermarkConfig {
     this.fontSize = 14.0,
     this.mode = WatermarkMode.boldGhost,
     this.applyTo = WatermarkApplyTo.both,
+    this.videoStyle = VideoWatermarkStyle.tiled,
   });
 
   final bool enabled;
   final bool showName;
   final bool showEmail;
   final bool showPhone;
+  // Files-only settings — the video watermark has its own fixed styling
+  // (see VideoWatermarkStyle) and ignores these three.
   final double opacity;
   final double fontSize;
   final WatermarkMode mode;
   final WatermarkApplyTo applyTo;
+  final VideoWatermarkStyle videoStyle;
 
   bool get applyToVideos =>
       enabled &&
@@ -38,7 +48,9 @@ class WatermarkConfig {
         ? WatermarkApplyTo.videos
         : (applyToStr == 'files'
             ? WatermarkApplyTo.files
-            : WatermarkApplyTo.both);
+            : (applyToStr == 'none'
+                ? WatermarkApplyTo.none
+                : WatermarkApplyTo.both));
 
     return WatermarkConfig(
       enabled: json['enabled'] as bool? ?? false,
@@ -51,6 +63,9 @@ class WatermarkConfig {
           ? WatermarkMode.boldGhost
           : WatermarkMode.tiled,
       applyTo: applyTo,
+      videoStyle: json['video_style'] == 'animated'
+          ? VideoWatermarkStyle.animated
+          : VideoWatermarkStyle.tiled,
     );
   }
 }

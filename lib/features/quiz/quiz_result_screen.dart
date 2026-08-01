@@ -359,15 +359,18 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  'Q${i + 1}: ${q.text}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                child: Directionality(
+                  textDirection: r.quiz.effectiveQuestionDirection(q),
+                  child: Text(
+                    'Q${i + 1}: ${q.text}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               GestureDetector(
@@ -399,11 +402,29 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
           ],
           if (q.explanation.isNotEmpty && !isCorrect) ...[
             const SizedBox(height: 6),
-            Text(
-              q.explanation,
-              style: const TextStyle(color: Colors.white38, fontSize: 11),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            // Apply the authored explanation direction explicitly — without
+            // this the explanation renders in the ambient direction even
+            // when the teacher set LTR.
+            Directionality(
+              textDirection: r.quiz.effectiveExplanationDirection(q),
+              child: Text(
+                q.explanation,
+                style: const TextStyle(color: Colors.white38, fontSize: 11),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+          if (q.explanation2.isNotEmpty && !isCorrect) ...[
+            const SizedBox(height: 4),
+            Directionality(
+              textDirection: r.quiz.effectiveExplanation2Direction(q),
+              child: Text(
+                q.explanation2,
+                style: const TextStyle(color: Colors.white30, fontSize: 10.5),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ],

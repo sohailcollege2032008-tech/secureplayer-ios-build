@@ -23,6 +23,13 @@ class QuizTextStyles {
   final TextStyle explanationStyle;
   final TextStyle feedbackTitleStyle;
 
+  /// Style for the second explanation field. Null until [explanation2Style]
+  /// is resolved — the widget falls back to [explanationStyle].
+  TextStyle? get explanation2Style => explanationStyle.copyWith(
+        fontSize: (explanationStyle.fontSize ?? 13.5) * 0.92,
+        color: explanationStyle.color,
+      );
+
   factory QuizTextStyles.forSettings(QuizSettings settings) {
     final scale = settings.fontSize / 16.0;
     final family = settings.fontFamily;

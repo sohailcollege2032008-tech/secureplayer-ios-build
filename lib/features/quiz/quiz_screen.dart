@@ -233,6 +233,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         triggerAtSecond: widget.quiz.triggerAtSecond,
         questionDirection: widget.quiz.questionDirection,
         explanationDirection: widget.quiz.explanationDirection,
+        explanation2Direction: widget.quiz.explanation2Direction,
         isGeneralQuiz: widget.quiz.isGeneralQuiz,
         exportAllowed: widget.quiz.exportAllowed,
         isPersonalQuiz: widget.quiz.isPersonalQuiz,
