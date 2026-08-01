@@ -125,7 +125,17 @@ class VideoServerNotifier extends AutoDisposeFamilyAsyncNotifier<
     final watermarkText =
         arg.watermarkEnabled ? await _buildWatermarkText() : '';
 
-    final httpServer = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    // Bind the lecture's deterministic port first so the WebView origin
+    // (and with it localStorage/cookies) stays stable across sessions and
+    // app restarts. If another live server already holds it, fall back to a
+    // random port — the fallback never serves WebView content in real flows.
+    HttpServer httpServer;
+    try {
+      httpServer = await HttpServer.bind(
+          InternetAddress.loopbackIPv4, ServerConstants.portFor(arg.lectureId));
+    } on SocketException {
+      httpServer = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    }
     final actualPort = httpServer.port;
 
     final lectureDir = '${appDir.path}/courses/${arg.lectureId}';

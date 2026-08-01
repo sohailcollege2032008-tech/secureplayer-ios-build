@@ -84,6 +84,12 @@ class SecurePdfControllerPinch extends TransformationController
   double _documentProgress = 0;
   double get documentProgress => _documentProgress;
 
+  /// Document layout size — null until the document is laid out.
+  Size? get docSize => _state?._docSize;
+
+  /// Viewport size — null until the first layout pass.
+  Size? get viewSize => _state?._lastViewSize;
+
   @override
   late final ValueNotifier<int> pageListenable = ValueNotifier(initialPage);
 
@@ -353,6 +359,8 @@ class SecurePdfViewPinch extends StatefulWidget {
     this.padding = 10,
     this.minScale = 1.0,
     this.maxScale = 20.0,
+    this.showPageNavigator = true,
+    this.showScrollbar = true,
     this.backgroundDecoration = const BoxDecoration(
       color: Color.fromARGB(255, 250, 250, 250),
       boxShadow: [
@@ -369,6 +377,10 @@ class SecurePdfViewPinch extends StatefulWidget {
   final double padding;
   final double minScale;
   final double maxScale;
+  /// Overlay a simple page navigator (prev/next, page x / y, tap-to-jump).
+  final bool showPageNavigator;
+  /// Overlay a thin draggable scrollbar on the right edge.
+  final bool showScrollbar;
   final SecurePdfControllerPinch controller;
   final void Function(int page)? onPageChanged;
   final void Function(PdfDocument document)? onDocumentLoaded;
@@ -877,24 +889,47 @@ class _SecurePdfViewPinchState extends State<SecurePdfViewPinch>
         final viewSize = Size(constraints.maxWidth, constraints.maxHeight);
         _reLayout(viewSize);
         final docSize = _docSize ?? const Size(10, 10);
-        return InteractiveViewer(
-          transformationController: _controller,
-          scrollControls: InteractiveViewerScrollControls.scrollPans,
-          constrained: false,
-          alignPanAxis: false,
-          boundaryMargin: _minScale < 1
-              ? const EdgeInsets.all(double.infinity)
-              : EdgeInsets.zero,
-          minScale: _minScale,
-          maxScale: _maxScale,
-          panEnabled: true,
-          scaleEnabled: true,
-          child: Stack(
-            children: <Widget>[
-              SizedBox(width: docSize.width, height: docSize.height),
-              ...iterateLaidOutPages(viewSize)
-            ],
-          ),
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: InteractiveViewer(
+                transformationController: _controller,
+                scrollControls: InteractiveViewerScrollControls.scrollPans,
+                constrained: false,
+                alignPanAxis: false,
+                boundaryMargin: _minScale < 1
+                    ? const EdgeInsets.all(double.infinity)
+                    : EdgeInsets.zero,
+                minScale: _minScale,
+                maxScale: _maxScale,
+                panEnabled: true,
+                scaleEnabled: true,
+                child: Stack(
+                  children: <Widget>[
+                    SizedBox(width: docSize.width, height: docSize.height),
+                    ...iterateLaidOutPages(viewSize)
+                  ],
+                ),
+              ),
+            ),
+            if (widget.showPageNavigator)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: SafeArea(
+                  minimum: const EdgeInsets.only(bottom: 10),
+                  child: _PdfNavigatorBar(controller: _controller),
+                ),
+              ),
+            if (widget.showScrollbar)
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                child: _PdfScrollbar(controller: _controller),
+              ),
+          ],
         );
       },
     );
@@ -1007,5 +1042,247 @@ class _SecurePdfViewPinchState extends State<SecurePdfViewPinch>
         );
       }
     }
+  }
+}
+
+// ── Page navigator overlay ─────────────────────────────────────────────────
+//
+// Small floating bar (prev / "page x of y" / next) at the bottom of the PDF
+// view. Tap the page label to jump to an arbitrary page. Shown once the
+// document is loaded and only for multi-page documents. Gestures outside
+// the bar fall through to the document pan/zoom untouched.
+
+class _PdfNavigatorBar extends StatelessWidget {
+  const _PdfNavigatorBar({required this.controller});
+
+  final SecurePdfControllerPinch controller;
+
+  Future<void> _goTo(int page) => controller.animateToPage(
+        pageNumber: page,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+
+  Future<void> _showJumpDialog(BuildContext context) async {
+    final pagesCount = controller.pagesCount ?? 0;
+    final inputCtrl = TextEditingController(text: '${controller.page}');
+    final target = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E),
+        title: const Text(
+          'Go to page',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        content: TextField(
+          controller: inputCtrl,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: '1 – $pagesCount',
+            hintStyle: const TextStyle(color: Colors.white38),
+            enabledBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.white24),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () {
+              final page = int.tryParse(inputCtrl.text.trim());
+              Navigator.of(dialogContext)
+                  .pop(page?.clamp(1, pagesCount).toInt());
+            },
+            child: const Text('Go', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    inputCtrl.dispose();
+    if (target != null && target >= 1 && target <= pagesCount) {
+      await _goTo(target);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pagesCount = controller.pagesCount;
+    if (pagesCount == null || pagesCount <= 1) {
+      return const SizedBox.shrink();
+    }
+    return Center(
+      child: ValueListenableBuilder<int>(
+        valueListenable: controller.pageListenable,
+        builder: (context, page, _) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.chevron_left_rounded,
+                      size: 22,
+                      color: page > 1 ? Colors.white : Colors.white24),
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(),
+                  onPressed: page > 1 ? () => _goTo(page - 1) : null,
+                ),
+                InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => _showJumpDialog(context),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    child: Text(
+                      '$page / $pagesCount',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.chevron_right_rounded,
+                      size: 22,
+                      color:
+                          page < pagesCount ? Colors.white : Colors.white24),
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(),
+                  onPressed:
+                      page < pagesCount ? () => _goTo(page + 1) : null,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Scrollbar overlay ───────────────────────────────────────────────────────
+//
+// InteractiveViewer is not a Scrollable, so a stock Scrollbar cannot attach
+// to it. This is a thin custom overlay on the right edge: thumb position
+// follows the controller's live documentProgress (0..1), thumb height is
+// proportional to the viewport/document ratio, and dragging the thumb (or
+// tapping the track) jumps straight to the corresponding page.
+
+class _PdfScrollbar extends StatefulWidget {
+  const _PdfScrollbar({required this.controller});
+
+  final SecurePdfControllerPinch controller;
+
+  @override
+  State<_PdfScrollbar> createState() => _PdfScrollbarState();
+}
+
+class _PdfScrollbarState extends State<_PdfScrollbar> {
+  static const double _hitWidth = 16;
+  static const double _trackWidth = 4;
+  static const double _minThumbHeight = 28;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onControllerChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _jumpToFraction(double fraction, int pagesCount, double trackHeight) {
+    final clamped = fraction.clamp(0.0, 1.0);
+    final page = (clamped * (pagesCount - 1)).round() + 1;
+    widget.controller.animateToPage(
+      pageNumber: page,
+      duration: Duration.zero,
+      curve: Curves.linear,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pagesCount = widget.controller.pagesCount;
+    final docSize = widget.controller.docSize;
+    if (pagesCount == null || pagesCount <= 1 || docSize == null) {
+      return const SizedBox.shrink();
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final trackHeight = constraints.maxHeight;
+        if (trackHeight <= 0) return const SizedBox.shrink();
+        final progress = widget.controller.documentProgress.clamp(0.0, 1.0);
+        final thumbHeight =
+            (trackHeight * (trackHeight / docSize.height))
+                .clamp(_minThumbHeight, trackHeight);
+        final maxTop = trackHeight - thumbHeight;
+        final thumbTop = (progress * maxTop).clamp(0.0, maxTop);
+
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (details) =>
+              _jumpToFraction(details.localPosition.dy / trackHeight,
+                  pagesCount, trackHeight),
+          onVerticalDragUpdate: (details) =>
+              _jumpToFraction(details.localPosition.dy / trackHeight,
+                  pagesCount, trackHeight),
+          child: SizedBox(
+            width: _hitWidth,
+            height: trackHeight,
+            child: Stack(
+              children: [
+                // Track.
+                Positioned(
+                  left: (_hitWidth - _trackWidth) / 2,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: _trackWidth,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                // Thumb.
+                Positioned(
+                  left: (_hitWidth - _trackWidth) / 2,
+                  top: thumbTop,
+                  width: _trackWidth,
+                  height: thumbHeight,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

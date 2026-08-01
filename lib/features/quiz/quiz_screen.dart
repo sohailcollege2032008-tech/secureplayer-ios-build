@@ -44,9 +44,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         WidgetsBindingObserver,
         SecurityRuntimeGuardMixin {
   int _currentIndex = 0;
-  bool _advancing = false;
-  // One-shot guard per answer so a manual swipe-to-skip-the-wait and the
-  // pending Future.delayed auto-advance can't both fire the same transition.
+  // One-shot guard per answer so a double-tap on "Next Question" (or a
+  // swipe that lands while the transition is already in flight) can't fire
+  // the same transition twice. There is deliberately NO auto-advance — the
+  // student stays on the solved question to read the explanation, then
+  // moves on manually with the Next button.
   bool _proceeded = false;
   // Scroll-layout's equivalent one-shot finish guard.
   bool _scrollFinished = false;
@@ -146,7 +148,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     }
     setState(() {
       _currentIndex = 0;
-      _advancing = false;
       _scrollFinished = false;
       _startTimeMs = DateTime.now().millisecondsSinceEpoch;
       _questionStartMs = _startTimeMs;
@@ -244,10 +245,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     setState(() => _selectedByIndex[index] = option);
   }
 
-  Future<void> _submit() async {
+  void _submit() {
     if (_selectedByIndex[_currentIndex] == null ||
-        _submittedByIndex[_currentIndex] ||
-        _advancing) {
+        _submittedByIndex[_currentIndex]) {
       return;
     }
     setState(() => _submittedByIndex[_currentIndex] = true);
@@ -258,16 +258,14 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
 
     if (!widget.isPopup) _persistProgress(); // fire-and-forget
 
-    setState(() => _advancing = true);
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (!mounted) return;
-    _proceed();
+    // No auto-advance: the student reads the explanation on this page and
+    // taps "Next Question" (or "View Results") when ready.
   }
 
   // Finalizes the quiz (last question) or advances to the next unanswered
-  // question. Runs either from _submit()'s delay or from an explicit
-  // swipe/arrow "next" while that delay is still pending — _proceeded
-  // ensures only one of those two triggers actually performs the transition.
+  // question. Runs only from an explicit Next tap (or a swipe that lands
+  // after submitting) — _proceeded ensures only one of those triggers
+  // actually performs the transition.
   void _proceed() {
     if (_proceeded) return;
     _proceeded = true;
@@ -280,7 +278,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     } else {
       setState(() {
         _currentIndex++;
-        _advancing = false;
         _questionStartMs = DateTime.now().millisecondsSinceEpoch;
       });
     }
@@ -336,17 +333,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
   // _currentIndex — nothing to copy into scalar fields anymore.
   void _viewQuestion(int index) {
     if (index < 0 || index > _answeredFrontier || index >= _total) return;
-    if (_advancing) return;
     setState(() => _currentIndex = index);
   }
 
-  void _handleSwipeNext() {
-    if (_advancing) {
-      _proceed(); // mid-flight after a fresh submit — skip the rest of the wait
-      return;
-    }
-    _viewQuestion(_currentIndex + 1);
-  }
+  void _handleSwipeNext() => _viewQuestion(_currentIndex + 1);
 
   void _handleSwipePrevious() => _viewQuestion(_currentIndex - 1);
 
@@ -511,52 +501,83 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     return idx == -1 ? _total : idx;
   }
 
-  bool get _isReviewingHistory => _currentIndex < _answeredFrontier;
+  // True when viewing a question that lies strictly BEFORE the active
+  // (most recently answered) question — e.g. after pressing Previous twice.
+  // The active question itself is NOT history: it shows "Next Question" /
+  // "View Results" even though it sits behind the unanswered frontier.
+  bool get _isReviewingHistory {
+    final frontier = _answeredFrontier;
+    final active = frontier == 0 ? 0 : frontier - 1;
+    return _currentIndex < active;
+  }
 
   Widget _buildSubmitButton() {
     final selected = _selectedByIndex[_currentIndex];
     final submitted = _submittedByIndex[_currentIndex];
     final canSubmit = selected != null && !submitted;
+    // Reviewing history = viewing a previously answered question (reached
+    // via Previous/swipe-back). No re-grading happens there; the Next button
+    // is disabled and the hint points at swipe to continue.
+    final reviewingHistory = submitted && _isReviewingHistory;
     final label = !submitted
         ? 'Submit'
-        : _isReviewingHistory
+        : reviewingHistory
             ? 'Already answered — swipe to continue'
-            : _advancing
-                ? (_isLast ? 'Loading results...' : 'Next...')
-                : (_isLast ? 'Finishing...' : 'Next Question');
+            : (_isLast ? 'View Results' : 'Next Question');
 
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: canSubmit ? _submit : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF6C63FF),
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: Colors.white12,
-          disabledForegroundColor: Colors.white38,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          elevation: 0,
-        ),
-        child: _advancing
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
+    return Row(
+      children: [
+        if (_currentIndex > 0) ...[
+          Expanded(
+            flex: 1,
+            child: OutlinedButton(
+              onPressed: _handleSwipePrevious,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white70,
+                side: const BorderSide(color: Colors.white24),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
-              )
-            : Text(
+              ),
+              child: const Text(
+                'Previous',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+        ],
+        Expanded(
+          flex: 2,
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: canSubmit
+                  ? _submit
+                  : (submitted && !reviewingHistory ? _proceed : null),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6C63FF),
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.white12,
+                disabledForegroundColor: Colors.white38,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
                 label,
                 style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
                 ),
               ),
-      ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

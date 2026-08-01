@@ -1,21 +1,25 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_windows/webview_windows.dart';
+import 'webview_session.dart';
 
 /// Platform-aware HTML viewer widget.
 ///
-/// - Android: uses `webview_flutter` (WebViewWidget).
-/// - Windows: uses `webview_windows` (WebView2 / Edge).
+/// - Android/iOS: `webview_flutter` (WebViewWidget / WKWebView).
+/// - Windows: `webview_windows` (WebView2 / Edge).
 ///
-/// Security properties:
-/// - NavigationDelegate (Android) blocks all non-127.0.0.1 navigation.
+/// All platforms share ONE keep-alive session ([WebviewSession]) so the
+/// in-app browser behaves like Chrome: localStorage, cookies, sessionStorage
+/// and in-page state survive leaving the viewer and — thanks to the stable
+/// per-lecture server port — even an app restart. The session is wiped only
+/// on logout, never on screen close.
+///
+/// Security properties (carried on the session's controller):
+/// - NavigationDelegate (Android/iOS) blocks all non-127.0.0.1 navigation.
 /// - URL listener (Windows) redirects any external navigation to about:blank.
 /// - Watermark overlay + anti-selection CSS/JS injected server-side by html_handler.dart.
-/// - WebView cache is cleared on dispose.
 class HtmlFileViewer extends StatefulWidget {
   const HtmlFileViewer({
     super.key,
@@ -34,107 +38,45 @@ class HtmlFileViewer extends StatefulWidget {
 }
 
 class _HtmlFileViewerState extends State<HtmlFileViewer> {
-  WebViewController? _androidCtrl;
-
-  WebviewController? _windowsCtrl;
-  bool _windowsReady = false;
-  bool _windowsAvailable = true;
-  StreamSubscription<String?>? _urlSub;
-
   @override
   void initState() {
     super.initState();
-    if (Platform.isWindows) {
-      _initWindows();
-    } else if (Platform.isAndroid) {
-      _initAndroid();
-    }
-  }
-
-  void _initAndroid() {
-    _androidCtrl = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000))
-      ..setNavigationDelegate(NavigationDelegate(
-        onNavigationRequest: (req) {
-          if (req.url.startsWith('http://127.0.0.1:')) {
-            return NavigationDecision.navigate;
-          }
-          // Open external http/https/mailto links in the system browser.
-          final uri = Uri.tryParse(req.url);
-          if (uri != null &&
-              (uri.scheme == 'https' ||
-                  uri.scheme == 'http' ||
-                  uri.scheme == 'mailto')) {
-            unawaited(launchUrl(uri, mode: LaunchMode.externalApplication));
-          }
-          return NavigationDecision.prevent;
-        },
-      ))
-      ..loadRequest(
-        Uri.parse(widget.url),
-        headers: {'Authorization': 'Bearer ${widget.sessionToken}'},
-      );
-  }
-
-  Future<void> _initWindows() async {
-    // getWebViewVersion() returns null when WebView2 Runtime is not installed.
-    final version = await WebviewController.getWebViewVersion();
-    if (version == null) {
-      if (mounted) setState(() => _windowsAvailable = false);
-      return;
-    }
-
-    final ctrl = WebviewController();
-    await ctrl.initialize();
-    await ctrl.setBackgroundColor(Colors.transparent);
-    await ctrl.setPopupWindowPolicy(WebviewPopupWindowPolicy.deny);
-
-    // Redirect any navigation that escapes 127.0.0.1 back to blank.
-    // The HTML server-side JS injection also prevents link clicks, but
-    // this provides a second layer for JavaScript redirects.
-    _urlSub = ctrl.url.listen((url) {
-      if (url.isNotEmpty &&
-          url != 'about:blank' &&
-          !url.startsWith('http://127.0.0.1:')) {
-        ctrl.loadUrl('about:blank');
-      }
-    });
-
-    await ctrl.loadUrl(widget.url);
-    _windowsCtrl = ctrl;
-    if (mounted) setState(() => _windowsReady = true);
+    WebviewSession.instance.addListener(_onSessionChanged);
+    _loadCurrent();
   }
 
   @override
   void didUpdateWidget(HtmlFileViewer old) {
     super.didUpdateWidget(old);
     if (old.url == widget.url) return;
-    if (Platform.isAndroid) {
-      _androidCtrl?.loadRequest(
-        Uri.parse(widget.url),
-        headers: {'Authorization': 'Bearer ${widget.sessionToken}'},
-      );
-    } else if (Platform.isWindows && _windowsReady) {
-      _windowsCtrl?.loadUrl(widget.url);
-    }
+    _loadCurrent();
   }
 
   @override
   void dispose() {
-    _urlSub?.cancel();
-    if (Platform.isAndroid && _androidCtrl != null) {
-      _androidCtrl!.clearCache();
-      _androidCtrl!.loadRequest(Uri.parse('about:blank'));
-    }
-    _windowsCtrl?.dispose();
+    WebviewSession.instance.removeListener(_onSessionChanged);
     super.dispose();
+  }
+
+  void _onSessionChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadCurrent() async {
+    if (Platform.isWindows) {
+      final ctrl = await WebviewSession.instance.ensureWindowsController();
+      if (ctrl == null) return; // WebView2 missing — build shows the error view.
+      if (mounted) ctrl.loadUrl(widget.url);
+    } else {
+      WebviewSession.instance
+          .loadUrl(widget.url, authToken: widget.sessionToken);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (Platform.isWindows) return _buildWindows();
-    if (Platform.isAndroid) return _buildAndroid();
+    if (Platform.isAndroid || Platform.isIOS) return _buildMobile();
     return const Center(
       child: Text(
         'HTML preview not supported on this platform.',
@@ -143,13 +85,14 @@ class _HtmlFileViewerState extends State<HtmlFileViewer> {
     );
   }
 
-  Widget _buildAndroid() {
-    if (_androidCtrl == null) return const SizedBox.shrink();
-    return WebViewWidget(controller: _androidCtrl!);
+  Widget _buildMobile() {
+    final session = WebviewSession.instance;
+    return WebViewWidget(controller: session.androidController());
   }
 
   Widget _buildWindows() {
-    if (!_windowsAvailable) {
+    final session = WebviewSession.instance;
+    if (!session.windowsAvailable) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
@@ -174,12 +117,14 @@ class _HtmlFileViewerState extends State<HtmlFileViewer> {
         ),
       );
     }
-    if (!_windowsReady) {
+    if (!session.windowsReady) {
       return const Center(
         child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
       );
     }
-    // _windowsCtrl is always non-null when _windowsReady is true (set in _initWindows)
-    return Webview(_windowsCtrl!);
+    // _windowsController is always non-null when windowsReady is true.
+    final ctrl = session.windowsController;
+    if (ctrl == null) return const SizedBox.shrink();
+    return Webview(ctrl);
   }
 }

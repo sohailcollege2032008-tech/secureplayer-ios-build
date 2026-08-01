@@ -20,6 +20,7 @@ import 'features/courses/sec_file_intent_service.dart';
 import 'features/quiz/quiz_settings_provider.dart';
 import 'local_server/decryption/iv_map_crypto.dart';
 import 'security_layer/screen_protection/screen_protection_service.dart';
+import 'shared/webview_session.dart';
 
 void _logError(String tag, Object error, StackTrace? stack) {
   debugPrint('[$tag] $error');
@@ -88,6 +89,10 @@ void main(List<String> args) async {
 
   // Pre-open the SQLite quiz database so first quiz load is instant
   await QuizDbService.instance.init();
+
+  // Keep-alive WebView session: wiped automatically whenever the user signs
+  // out, so the next student on this device starts with a clean browser.
+  WebviewSession.instance.attachLogoutListener();
 
   // Created here (not later) so it can be seeded with provider state before
   // any widget exists — see quizSettingsProvider seeding below.
