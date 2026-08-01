@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
@@ -118,7 +119,7 @@ class RootDetectionService {
     }
     if (_skip) return RootDetectionCause.none;
     if (kDebugMode) return RootDetectionCause.none;
-    if (Platform.isIOS) return _detectCauseIOS();
+    if (Platform.isIOS) return _detectCauseIOSReportOnly();
     if (!Platform.isAndroid) return RootDetectionCause.none;
     try {
       // 0. Dart-side Frida check (MethodChannel-independent, Android/Linux only)
@@ -160,6 +161,44 @@ class RootDetectionService {
     } catch (_) {
       return RootDetectionCause.frida; // fail closed (treat as compromised)
     }
+  }
+
+  /// Runs the full iOS check set but NEVER blocks — it reports what it would
+  /// have blocked and then returns clean.
+  ///
+  /// Deliberate staged rollout, matching the log-only pattern this project
+  /// already uses server-side for App Check and teacher-scope mismatches.
+  /// The reasoning is asymmetry of cost: a true positive here only stops
+  /// someone who has already jailbroken their device — and FairPlay DRM,
+  /// which is the actual content protection, keeps working regardless. A
+  /// false positive locks a paying student out of the app entirely, and the
+  /// last time this ran live it hard-blocked the one person testing it.
+  /// Until there is production evidence of a clean false-positive rate,
+  /// blocking risks far more than it protects.
+  ///
+  /// Crashlytics is the report channel because it already exists and is
+  /// initialised in main.dart — a client write to `security_events` is not
+  /// possible (firestore.rules denies it), and adding a callable function
+  /// for this would be new infrastructure for data nobody reads yet.
+  ///
+  /// To switch to enforcing: return `cause` instead of
+  /// RootDetectionCause.none below, after confirming Crashlytics shows no
+  /// `ios_jailbreak_detected` reports from legitimate installs.
+  Future<RootDetectionCause> _detectCauseIOSReportOnly() async {
+    final cause = await _detectCauseIOS();
+    if (cause == RootDetectionCause.none) return RootDetectionCause.none;
+    try {
+      FirebaseCrashlytics.instance.log('ios_jailbreak_detected: ${cause.name}');
+      await FirebaseCrashlytics.instance.recordError(
+        'ios_jailbreak_detected: ${cause.name}',
+        StackTrace.current,
+        reason: 'iOS tamper detection is REPORT-ONLY — user was NOT blocked',
+        fatal: false,
+      );
+    } catch (_) {
+      // Never let telemetry failure affect playback.
+    }
+    return RootDetectionCause.none;
   }
 
   Future<RootDetectionCause> _detectCauseIOS() async {
