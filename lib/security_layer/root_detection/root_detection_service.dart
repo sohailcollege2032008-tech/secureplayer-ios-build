@@ -37,7 +37,13 @@ class RootDetectionService {
   // release. Revert plan: flip to false, rebuild, hand the tester build 128
   // (or newer) and confirm it launches clean; only then remove this flag
   // and the early-return in _detectCauseIOS() entirely.
-  static const _iosDetectionTemporarilyDisabled = true;
+  // RE-ENABLED 2026-08-01. iOS jailbreak/Frida/tamper detection is live again
+  // (checks 1-5 in _detectCauseIOS). The check that actually caused the
+  // original hard-block — signature/provisioning validation — is no longer
+  // run on iOS at all rather than merely being patched; see the long note at
+  // the end of _detectCauseIOS for why that one is both the riskiest and the
+  // least useful of the six on this platform.
+  static const _iosDetectionTemporarilyDisabled = false;
 
   // Obfuscated markers: frida, gum-js-loop, frida-agent, linjector, re.frida
   static final List<String> _fridaMarkers = [
@@ -185,13 +191,23 @@ class RootDetectionService {
         return RootDetectionCause.magiskHidden;
       }
 
-      // 6. Provisioning-profile presence + bundle-ID consistency
-      if (!kDebugMode) {
-        final sigValid =
-            await _channel.invokeMethod<bool>('isSignatureValid') ?? false;
-        if (!sigValid) return RootDetectionCause.signatureInvalid;
-      }
-
+      // 6. Signature/provisioning validation — DELIBERATELY NOT RUN ON iOS.
+      //
+      // This is the check that hard-blocked a real tester on launch, and its
+      // failure mode is the worst possible one: it blocks 100% of legitimate
+      // users rather than degrading. App Store and TestFlight builds contain
+      // no embedded.mobileprovision at all, so isSignatureValid() falls back
+      // to probing for an App Store receipt — and that receipt is not
+      // reliably present on first launch (iOS may require an explicit
+      // SKReceiptRefreshRequest before one exists). A miss there returns
+      // false and blocks the app.
+      //
+      // It also buys almost nothing here. iOS enforces code signing at the
+      // OS level, so a tampered binary cannot run on a non-jailbroken device
+      // in the first place — and on a jailbroken one, checks 1-5 above are
+      // what actually catch it. Android keeps its own signature check
+      // (detectCause's Android branch), where it is genuinely load-bearing
+      // because sideloading a re-signed APK is trivial there.
       return RootDetectionCause.none;
     } catch (_) {
       return RootDetectionCause.frida; // fail closed, same posture as Android
