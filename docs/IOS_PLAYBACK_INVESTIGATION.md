@@ -3,18 +3,70 @@
 **Status: root cause identified, fix not yet written or verified.**
 Started 2026-08-02.
 
-## The report
+## UPDATE 2026-08-03 (2nd) — scope of the freeze confirmed: ANY new export
 
-Osama, real iPhone:
+Sohail (2026-08-03): the freeze is NOT demo-course-specific. On Osama's
+device:
 
-- **Old `.secfp`** (exported before 2026-08-01) → plays, but **no audio**.
-- **New `.secfp`** (exported after) → opens the video and **freezes at 0:00**,
-  never starts. Described as "crashed or froze". Happens with and without
-  screen recording.
+- Old lecture + old file → plays normally, but **no audio** (DRM solid).
+- **Any** new file in **any** new lecture → same crash/stall at 0:00.
+- The demo lecture video → same crash, exactly.
 
-The same lecture exported as `.msec` plays correctly on Android. That is not a
-contradiction: Android never plays `.secfp` at all — different format, entirely
-different pipeline. It tells us nothing about the FairPlay path.
+This is a decisive fact: a NEW lecture has a brand-new `skd://` identifier
+(`{lectureId}_{videoId}`), so no persisted key can exist for it on the
+device — the delegate goes the full SPC→KSM→CKC→persist path with a
+guaranteed-fresh key and still stalls. That kills the **stale persisted
+key** theory (re-import reusing an old key) as the cause of the new-lecture
+freeze. It also kills the old-file-licence theory definitively: the old
+file's DRM demonstrably works end-to-end.
+
+The freeze therefore tracks the PACKAGING variables only (the two commits
+below), independent of device state. Everything any real explanation must
+fit:
+
+1. Old export (`DEFAULT=NO`, clear_lead 5s) plays fully, silently.
+2. New export (`DEFAULT=YES`, `clear_lead 0`) freezes at 0:00 — in ANY
+   lecture, fresh device state or not.
+3. `.msec` on Android is irrelevant — different pipeline entirely.
+4. Licence acquisition works on that device (proven by fact 1).
+5. The only packaging variables are the audio rendition becoming selectable
+   and clear_lead going to 0.
+
+## The A/B/C/D packaging experiment (2026-08-03, ready)
+
+`secure` repo (whitelabel-build): `fairplay_packager.py` now accepts
+`clear_lead` and `mark_audio_default` (defaults byte-identical to current),
+and `scripts/fairplay_ab_experiment.py` builds the demo lecture four ways
+with the ALREADY-published Firestore key (zero DB writes, zero iOS builds):
+
+- **A** = clear_lead 0 + DEFAULT=YES (current — freeze repro)
+- **B** = clear_lead 5 + DEFAULT=YES (clear lead restores a playable
+  opening → key exchange was slow/broken)
+- **C** = clear_lead 0 + DEFAULT=NO (audio rendition is the trigger)
+- **D** = clear_lead 5 + DEFAULT=NO (positive control — byte-equivalent to
+  the old export that plays; if D plays but A freezes, the experiment is
+  sound)
+
+Outputs: `C:\Users\ASUS\AppData\Local\Temp\opencode\fp_ab_experiment\
+experiment_{A,B,C,D}.secfp` (12.21 MB each, same skd:// identifier
+`fairplay_demo_001_video_01`, same published key `92037309...`).
+Manifests verified: A/C encrypted from frame one, B/D carry the
+discontinuity; A/B DEFAULT=YES, C/D DEFAULT=NO.
+
+Test protocol per variant on Osama's device: delete the app, reinstall
+(same build — clears `.fairplay_keys`), login demo account, import file,
+play. Fresh state per variant controls the persisted-key variable so every
+variant exercises the full key exchange.
+
+Predicted outcomes:
+- A freezes, B plays → clear_lead was masking a slow/broken key exchange
+- A freezes, C plays → the audio rendition / dual-track selection is it
+- A freezes, D plays → control confirms the experiment isolates the two
+  variables correctly
+- A plays on a fresh install → then the demo-course freeze Osama saw was
+  the stale persisted key, but the new-lecture freeze needs a different
+  explanation — do not jump to conclusions, report raw results first
+
 
 ## UPDATE 2026-08-03 — the fix below did NOT resolve it
 
