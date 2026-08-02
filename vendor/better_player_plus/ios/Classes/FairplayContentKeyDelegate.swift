@@ -67,6 +67,42 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
         return dir
     }()
 
+    /// Content key identifiers with a licence fetch already in flight.
+    ///
+    /// An HLS package with a separate audio rendition produces TWO tracks that
+    /// carry the SAME `#EXT-X-KEY` (same `skd://` identifier), so AVFoundation
+    /// issues two key requests for one identifier, effectively at once. On a
+    /// first play neither finds a persisted key on disk, so without this guard
+    /// both would fetch a licence, both would call
+    /// `persistableContentKey(fromKeyVendorResponse:)`, and both would write
+    /// the same file — a race that leaves the player stalled with no frames.
+    ///
+    /// This is why Apple's own HLS Catalog sample keeps
+    /// `pendingPersistableContentKeyIdentifiers`. It was missed when this
+    /// delegate was adapted from that sample, and stayed invisible for as long
+    /// as the audio rendition was tagged DEFAULT=NO — AVPlayer never selected
+    /// it, so only one key was ever requested (which is also why those builds
+    /// played silently). Tagging audio as default surfaced it immediately.
+    ///
+    /// Guarded by `pendingLock`: the requests arrive on AVFoundation's queue,
+    /// not necessarily serialised.
+    private var pendingPersistableContentKeyIdentifiers = Set<String>()
+    private let pendingLock = NSLock()
+
+    /// Returns true if this call claimed the identifier (caller proceeds), or
+    /// false if a fetch was already in flight (caller must not start another).
+    private func claimPendingKeyRequest(_ identifier: String) -> Bool {
+        pendingLock.lock()
+        defer { pendingLock.unlock() }
+        return pendingPersistableContentKeyIdentifiers.insert(identifier).inserted
+    }
+
+    private func releasePendingKeyRequest(_ identifier: String) {
+        pendingLock.lock()
+        defer { pendingLock.unlock() }
+        pendingPersistableContentKeyIdentifiers.remove(identifier)
+    }
+
     /// Called from BetterPlayer.swift before the asset is registered with
     /// the content key session. certURL is a bundled local asset (the FPS
     /// application certificate — public data, safe to ship in the app; the
@@ -276,7 +312,7 @@ extension FairplayContentKeyDelegate {
         handlePersistableContentKeyRequest(keyRequest: keyRequest)
     }
 
-    func handlePersistableContentKeyRequest(keyRequest: AVPersistableContentKeyRequest) {
+    func handlePersistableContentKeyRequest(keyRequest: AVPersistableContentKeyRequest, attempt: Int = 0) {
         guard let contentKeyIdentifierString = keyRequest.identifier as? String,
               let contentKeyIdentifierURL = URL(string: contentKeyIdentifierString),
               let assetIDString = contentKeyIdentifierURL.host,
@@ -300,6 +336,36 @@ extension FairplayContentKeyDelegate {
             FairplayDiagnostics.log("persisted key file unreadable, re-requesting")
         }
 
+        // No key on disk yet. Only ONE licence fetch may run per identifier —
+        // see pendingPersistableContentKeyIdentifiers. A second track (audio)
+        // asking for the same key waits for the first to land rather than
+        // starting a competing fetch.
+        guard claimPendingKeyRequest(assetIDString) else {
+            // Bounded wait: ~10s in 250ms steps. Re-entering re-runs the
+            // on-disk fast path above, so this resolves as soon as the
+            // in-flight fetch writes the key. If that fetch instead fails and
+            // releases its claim, this call takes over and fetches itself.
+            guard attempt < 40 else {
+                FairplayDiagnostics.log(
+                    "gave up waiting for in-flight key fetch for \(assetIDString)"
+                )
+                keyRequest.processContentKeyResponseError(FairplayError.invalidRequestConfig)
+                return
+            }
+            if attempt == 0 {
+                FairplayDiagnostics.log(
+                    "key fetch already in flight for \(assetIDString) "
+                    + "(second track — audio rendition); waiting"
+                )
+            }
+            DispatchQueue.global(qos: .userInitiated)
+                .asyncAfter(deadline: .now() + 0.25) { [weak self] in
+                    self?.handlePersistableContentKeyRequest(
+                        keyRequest: keyRequest, attempt: attempt + 1)
+                }
+            return
+        }
+
         do {
             let applicationCertificate = try requestApplicationCertificate()
             FairplayDiagnostics.log(
@@ -315,11 +381,13 @@ extension FairplayContentKeyDelegate {
                     FairplayDiagnostics.log(
                         "SPC generation FAILED: " + FairplayDiagnostics.describe(error)
                     )
+                    self.releasePendingKeyRequest(assetIDString)
                     keyRequest.processContentKeyResponseError(error)
                     return
                 }
                 guard let spcData = spcData else {
                     FairplayDiagnostics.log("SPC generation returned no data and no error")
+                    self.releasePendingKeyRequest(assetIDString)
                     return
                 }
                 FairplayDiagnostics.log("SPC built (\(spcData.count) bytes), calling KSM")
@@ -332,9 +400,14 @@ extension FairplayContentKeyDelegate {
                     try self.writePersistableContentKey(contentKey: persistentKey, withContentKeyIdentifier: assetIDString)
                     FairplayDiagnostics.log("persisted key written to disk, responding to AVFoundation")
 
+                    // Released only AFTER the key is on disk, so a waiting
+                    // second track re-checks and finds it rather than starting
+                    // its own fetch.
+                    self.releasePendingKeyRequest(assetIDString)
                     let response = AVContentKeyResponse(fairPlayStreamingKeyResponseData: persistentKey)
                     keyRequest.processContentKeyResponse(response)
                 } catch {
+                    self.releasePendingKeyRequest(assetIDString)
                     // Covers the KSM call, the CKC->persistable conversion (which
                     // fails if the CKC was not issued for offline use), and the
                     // disk write — previously indistinguishable from each other.
@@ -345,6 +418,10 @@ extension FairplayContentKeyDelegate {
                 }
             }
         } catch {
+            // requestApplicationCertificate() threw — the claim above is still
+            // held and must not leak, or the audio track waits out its full
+            // retry budget for a fetch that never started.
+            releasePendingKeyRequest(assetIDString)
             keyRequest.processContentKeyResponseError(error)
         }
     }
