@@ -16,7 +16,39 @@ The same lecture exported as `.msec` plays correctly on Android. That is not a
 contradiction: Android never plays `.secfp` at all — different format, entirely
 different pipeline. It tells us nothing about the FairPlay path.
 
-## Root cause
+## UPDATE 2026-08-03 — the fix below did NOT resolve it
+
+Osama rebuilt with `3319343` (verified: his `d1c4907` sits on top of it) and
+the stall is unchanged. The duplicate-key-request race described below is
+therefore **not the cause**, or not the whole cause. The section is kept
+because the missing pending-set was a real defect worth fixing on its own.
+
+Two further hypotheses are also dead, both killed by direct evidence:
+
+- **"The licence never worked; the old file only played its 5s clear lead."**
+  Wrong — the old export plays *in full*, not five seconds. Licence
+  acquisition works on that device.
+- **"The audio playlist URI isn't rewritten with the auth token."**
+  Wrong — `fairplay_static_handler.dart:66-69` rewrites quoted `URI="…m3u8"`
+  and `URI="…mp4"` references, so `#EXT-X-MEDIA`'s `audio.m3u8` does get
+  `?t=`. (Note the existing serve test only asserted this for `video.m3u8` —
+  worth extending.)
+
+**Four diagnoses, all from inference, all wrong.** Stop proposing causes. The
+next commit adds a stall watchdog that surfaces the native FairPlay log on
+screen; the failing stage must be *read*, not guessed. Do not write another
+fix before that log exists.
+
+What is still known for certain, and any real explanation must fit all of it:
+
+1. Old export (audio `DEFAULT=NO`) plays fully, silently.
+2. New export (audio `DEFAULT=YES`, `clear_lead 0`) freezes at 0:00.
+3. The same lecture exported as `.msec` plays on Android — irrelevant, that is
+   a different pipeline entirely.
+4. Video decryption and licence acquisition demonstrably work on that device.
+5. The only variable is the audio rendition becoming selectable.
+
+## Original root-cause analysis (superseded — kept for the record)
 
 Two changes landed in `encryptor/fairplay_packager.py` between those exports:
 
