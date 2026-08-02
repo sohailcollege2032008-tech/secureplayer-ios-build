@@ -187,6 +187,7 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
         let waitResult = semaphore.wait(timeout: .now() + 25)
         if waitResult == .timedOut {
             FairplayDiagnostics.log("KSM request TIMED OUT after 25s for \(assetID)")
+            FairplayDiagnostics.uploadStallLog(config: config, reason: "KSM request timed out")
         }
 
         if let resultError = resultError {
@@ -194,6 +195,7 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
                 "KSM request errored for \(assetID): "
                 + FairplayDiagnostics.describe(resultError)
             )
+            FairplayDiagnostics.uploadStallLog(config: config, reason: "KSM request errored")
             throw resultError
         }
         guard let resultData = resultData,
@@ -206,6 +208,7 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
                 "KSM returned no usable CKC for \(assetID) (HTTP \(httpStatus)): "
                 + raw.prefix(300)
             )
+            FairplayDiagnostics.uploadStallLog(config: config, reason: "KSM returned no usable CKC")
             throw FairplayError.noCkcReturnedByKsm(raw)
         }
         FairplayDiagnostics.log(
@@ -414,6 +417,9 @@ extension FairplayContentKeyDelegate {
                     FairplayDiagnostics.log(
                         "persistable key flow FAILED: " + FairplayDiagnostics.describe(error)
                     )
+                    // Debug-only: push the log to the backend even if the UI is
+                    // frozen, so the stall investigation has the failing stage.
+                    self.uploadStallLogForAsset(assetID: assetIDString, reason: "persistable key flow failed")
                     keyRequest.processContentKeyResponseError(error)
                 }
             }
@@ -437,5 +443,17 @@ extension FairplayContentKeyDelegate {
     func writePersistableContentKey(contentKey: Data, withContentKeyIdentifier contentKeyIdentifier: String) throws {
         let fileURL = urlForPersistableContentKey(withContentKeyIdentifier: contentKeyIdentifier)
         try contentKey.write(to: fileURL, options: Data.WritingOptions.atomicWrite)
+    }
+
+    /// Debug-only (branch `debug-fairplay-logviewer`): uploads the current
+    /// diagnostics log to the backend the moment a key-exchange stage fails,
+    /// independent of the Dart UI (which may be frozen). Reads the request
+    /// config by assetID to obtain the idToken.
+    func uploadStallLogForAsset(assetID: String, reason: String) {
+        configLock.lock()
+        let config = requestConfigs[assetID]
+        configLock.unlock()
+        guard let config = config else { return }
+        FairplayDiagnostics.uploadStallLog(config: config, reason: reason)
     }
 }

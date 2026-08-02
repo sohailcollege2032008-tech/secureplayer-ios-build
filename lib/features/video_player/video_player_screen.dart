@@ -32,6 +32,7 @@ import '../../core/errors/app_exception.dart';
 import '../../core/models/course_metadata.dart';
 import '../../core/models/quiz.dart';
 import '../../core/services/pdf_page_cache.dart';
+import '../../debug/fairplay_log_viewer.dart';
 import '../../features/auth/auth_providers.dart';
 import '../../features/quiz/quiz_provider.dart';
 import '../../local_server/server_provider.dart';
@@ -1300,38 +1301,49 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
     return Scaffold(
       backgroundColor: Colors.black,
       // No AppBar — back button lives inside the custom controls overlay.
-      body: SecurityGuardGate(
-        suppressTransientHold: Platform.isIOS && _fairplayPackageAvailable,
-        child: serverAsync.when(
-          loading: () => _spinner('Starting player...'),
-          error: (err, _) => _buildErrorState(_formatError(err)),
-          data: (ready) {
-            if (_playerErrorMessage != null) {
-              return _buildErrorState(_playerErrorMessage!);
-            }
-            final playerReady =
-                Platform.isWindows ? _mkCtrl != null : _controller != null;
-            if (!playerReady) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                _initPlayer(ready.hlsUrl, ready.sessionToken);
-                if (kDebugMode && ready.adbDetected && !_adbWarningShown) {
-                  _adbWarningShown = true;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content:
-                          Text('[DEV] ADB detected — blocked in release build'),
-                      backgroundColor: Colors.orange,
-                      duration: Duration(seconds: 5),
-                    ),
-                  );
+      body: Stack(
+        children: [
+          SecurityGuardGate(
+            suppressTransientHold: Platform.isIOS && _fairplayPackageAvailable,
+            child: serverAsync.when(
+              loading: () => _spinner('Starting player...'),
+              error: (err, _) => _buildErrorState(_formatError(err)),
+              data: (ready) {
+                if (_playerErrorMessage != null) {
+                  return _buildErrorState(_playerErrorMessage!);
                 }
-              });
-              return _spinner('Loading video...');
-            }
-            return _buildPlayer(profile, ready);
-          },
-        ),
+                final playerReady =
+                    Platform.isWindows ? _mkCtrl != null : _controller != null;
+                if (!playerReady) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    _initPlayer(ready.hlsUrl, ready.sessionToken);
+                    if (kDebugMode && ready.adbDetected && !_adbWarningShown) {
+                      _adbWarningShown = true;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content:
+                              Text('[DEV] ADB detected — blocked in release build'),
+                          backgroundColor: Colors.orange,
+                          duration: Duration(seconds: 5),
+                        ),
+                      );
+                    }
+                  });
+                  return _spinner('Loading video...');
+                }
+                return _buildPlayer(profile, ready);
+              },
+            ),
+          ),
+          // DEBUG-ONLY (branch debug-fairplay-logviewer): always-reachable
+          // log button — even while the player is stuck at "Loading…".
+          const Positioned(
+            top: 40,
+            right: 8,
+            child: FairplayDebugLogButton(color: Colors.white),
+          ),
+        ],
       ),
     );
   }

@@ -78,4 +78,48 @@ enum FairplayDiagnostics {
         }
         return parts.joined(separator: " ")
     }
+
+    // MARK: Debug-only backend upload (branch `debug-fairplay-logviewer`)
+
+    /// Cloud Function that ingests the log. Same callable wire format as the
+    /// KSM call: POST {"data": {...}} with Bearer idToken, response
+    /// {"result": {...}}.
+    private static let stallLogFunctionURL =
+        "https://us-central1-stud-future-platform-db.cloudfunctions.net/reportFairplayStallLog"
+
+    /// Fire-and-forget: reads the current log file and POSTs it to
+    /// reportFairplayStallLog. Runs on the caller's queue (the delegate's
+    /// background queue), never the main thread. Deliberately swallows all
+    /// errors — this is diagnostics, it must never make a failure worse.
+    static func uploadStallLog(config: FairplayRequestConfig, reason: String) {
+        guard let url = URL(string: stallLogFunctionURL),
+              let logText = readCurrentLog() else { return }
+
+        let body: [String: Any] = [
+            "data": [
+                "lectureId": config.lectureId,
+                "videoId": config.videoId,
+                "deviceId": config.deviceId,
+                "log": "[reason: \(reason)]\n\(logText)",
+            ]
+        ]
+        guard let httpBody = try? JSONSerialization.data(withJSONObject: body) else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(config.idToken)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 10
+        request.httpBody = httpBody
+
+        URLSession.shared.dataTask(with: request) { _, _, _ in }.resume()
+    }
+
+    /// Synchronously reads whatever the log file currently contains. Called
+    /// from the delegate's own queue, where a short blocking read is fine.
+    static func readCurrentLog() -> String? {
+        guard let url = logFileURL,
+              let data = try? Data(contentsOf: url) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
 }

@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/version_info.dart';
+import '../../debug/fairplay_log_viewer.dart';
 import '../../features/auth/auth_providers.dart';
 import '../../shared/widgets/app_drawer.dart';
 import '../../shared/widgets/loading_indicator.dart';
@@ -483,6 +484,9 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
             icon: const Icon(Icons.style_rounded),
             onPressed: () => context.push('/review'),
           ),
+          // DEBUG-ONLY (branch debug-fairplay-logviewer): grab the native
+          // FairPlay log any time — survives force-quit (see the viewer doc).
+          const FairplayDebugLogButton(),
         ],
       ),
       body: Column(
