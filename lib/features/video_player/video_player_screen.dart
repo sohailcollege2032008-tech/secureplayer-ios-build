@@ -90,6 +90,16 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
   String? _playerErrorMessage;
   bool _adbWarningShown = false;
   Timer? _progressTimer;
+
+  // iOS FairPlay only. A failed key exchange does NOT surface as a
+  // BetterPlayer `exception` — AVPlayer simply never produces a frame and sits
+  // there. That silence is why the native FairPlay log, which records every
+  // stage of the key exchange, was unreachable in exactly the failure mode it
+  // exists to explain: the log is shown only on the error screen, and the
+  // error screen only renders on an exception. This watchdog converts "stuck
+  // forever" into a readable report.
+  Timer? _fairplayStallWatchdog;
+  bool _fairplayProducedFrames = false;
   // Loaded from disk on init so popups don't re-fire on re-entry.
   final Set<String> _triggeredPopupIds = {};
 
@@ -190,6 +200,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
     WidgetsBinding.instance.removeObserver(this);
     stopSecurityGuard();
     _progressTimer?.cancel();
+    _fairplayStallWatchdog?.cancel();
     _controlsHideTimer?.cancel();
     _seekFeedbackTimer?.cancel();
     _savePosition();
@@ -420,6 +431,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
         const Duration(seconds: 1),
         _checkPopupTrigger,
       );
+      _startFairplayStallWatchdog();
       if (mounted) setState(() {});
     }).catchError((Object e) {
       if (mounted) {
@@ -575,8 +587,40 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
     }
   }
 
+  // Arms only for the iOS FairPlay path. A stalled key exchange emits no
+  // event at all, so the only trustworthy proof of life is the playhead
+  // actually moving — `play` fires even when AVPlayer then renders nothing.
+  void _startFairplayStallWatchdog() {
+    if (!Platform.isIOS || !_fairplayPackageAvailable) return;
+    _fairplayStallWatchdog?.cancel();
+    _fairplayProducedFrames = false;
+    _fairplayStallWatchdog = Timer(const Duration(seconds: 20), () async {
+      if (!mounted || _fairplayProducedFrames || _playerErrorMessage != null) {
+        return;
+      }
+      final diagnostics = await FairplayService.readDiagnostics();
+      if (!mounted) return;
+      setState(() {
+        _playerErrorMessage =
+            'Video did not start within 20 seconds.\n'
+            'The FairPlay key exchange produced no frames.\n\n'
+            '--- FairPlay log ---\n'
+            '${diagnostics.isEmpty ? '(log empty — the native key delegate was never called)' : diagnostics}';
+      });
+    });
+  }
+
   Future<void> _checkPopupTrigger(Timer t) async {
     if (!mounted || _controller == null) return;
+    // Playhead movement is the one unambiguous signal that decryption and
+    // rendering are actually working; used to disarm the stall watchdog.
+    if (!_fairplayProducedFrames) {
+      final pos = _controller?.videoPlayerController?.value.position;
+      if (pos != null && pos > Duration.zero) {
+        _fairplayProducedFrames = true;
+        _fairplayStallWatchdog?.cancel();
+      }
+    }
 
     final vc = _controller!.videoPlayerController;
     if (vc == null) return;
