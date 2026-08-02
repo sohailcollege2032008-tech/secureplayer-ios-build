@@ -80,5 +80,13 @@
 	     over an unconvincing purpose string. -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Lets you choose an image from your device to attach to a question in your own personal quiz. Images stay on your device.</string>
+<!-- الكاميرا (لحل المشكلة الأساسية) -->
+<key>NSCameraUsageDescription</key>
+<string>This app requires access to the camera to allow you to capture and upload photos directly within the app.</string>
+
+<!-- الموقع (لحل رسالة التنبيه) -->
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>This app requires access to your location to provide you with relevant local services and improve your experience.</string>
+
 </dict>
 </plist>
