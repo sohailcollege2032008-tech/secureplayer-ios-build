@@ -745,6 +745,24 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
     );
   }
 
+  // Leaves the video entirely and returns to the lecture list. If the video
+  // is fullscreen, first restore the system UI + orientation so the screen
+  // we land on isn't left in immersive mode.
+  void _handleBack() {
+    if (Platform.isAndroid) {
+      _applyAndroidSystemUiMode(false);
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else if (Platform.isWindows && _isFullscreen) {
+      _exitWindowsFullscreen();
+    }
+    context.pop();
+  }
+
   void _toggleFullscreen() {
     if (_isFullscreen) {
       setState(() => _isFullscreen = false);
@@ -998,12 +1016,15 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
         padding: const EdgeInsets.fromLTRB(4, 4, 8, 0),
         child: Row(
           children: [
-            // Back button — exits fullscreen when fullscreen, otherwise pops route
+            // Back button — ALWAYS leaves the video and returns to the
+            // lecture list, fullscreen or not. Exiting fullscreen is the
+            // fullscreen button's job alone (the old behavior of treating
+            // back as a fullscreen toggle left users stuck toggling instead
+            // of navigating).
             IconButton(
               icon: const Icon(Icons.arrow_back_ios_new_rounded,
                   color: Colors.white, size: 20),
-              onPressed:
-                  _isFullscreen ? _toggleFullscreen : () => context.pop(),
+              onPressed: _handleBack,
               padding: const EdgeInsets.all(8),
             ),
             const Spacer(),

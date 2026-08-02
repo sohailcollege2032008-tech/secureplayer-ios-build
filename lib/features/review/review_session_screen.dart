@@ -466,17 +466,24 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen>
   Widget _buildQuestion(ReviewQuestion entry, QuizTextStyles styles) {
     final starred =
         ref.watch(starredProvider(entry.courseId)).isStarred(entry.question.id);
+    // Apply the authored question direction explicitly (quiz-level default
+    // combined with the per-question override), like the quiz screens do.
+    final questionDir = _direction(entry.question.questionDirectionOverride ??
+        entry.quizQuestionDirection);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: QuestionTextWithImage(
-            text: entry.question.text,
-            hasImage: entry.question.hasImage,
-            imageBytes: cachedImage(
-                entry.isPersonalQuiz ? entry.quizId : entry.lectureId,
-                entry.question.imageId),
-            textStyle: styles.questionStyle,
+          child: Directionality(
+            textDirection: questionDir,
+            child: QuestionTextWithImage(
+              text: entry.question.text,
+              hasImage: entry.question.hasImage,
+              imageBytes: cachedImage(
+                  entry.isPersonalQuiz ? entry.quizId : entry.lectureId,
+                  entry.question.imageId),
+              textStyle: styles.questionStyle,
+            ),
           ),
         ),
         IconButton(
@@ -573,6 +580,15 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen>
 
   Widget _buildFeedback(ReviewQuestion entry, QuizTextStyles styles) {
     final isCorrect = _selected == entry.question.correctIndex;
+    final q = entry.question;
+    // Apply the authored explanation directions explicitly — the review
+    // session renders its own feedback (not QuizQuestionBody), so without
+    // this the explanations ignore the teacher's LTR/RTL settings and the
+    // second explanation field never shows.
+    final explanationDir = _direction(
+        q.explanationDirectionOverride ?? entry.quizExplanationDirection);
+    final explanation2Dir = _direction(
+        q.explanation2DirectionOverride ?? entry.quizExplanation2Direction);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -607,17 +623,57 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen>
               ),
             ],
           ),
-          if (entry.question.explanation.isNotEmpty) ...[
+          if (q.explanation.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(
-              entry.question.explanation,
-              style: styles.explanationStyle,
+            Directionality(
+              textDirection: explanationDir,
+              child: Text(q.explanation, style: styles.explanationStyle),
+            ),
+          ],
+          if (q.explanation2.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              height: 1,
+              color: Colors.white12,
+            ),
+            const SizedBox(height: 10),
+            Directionality(
+              textDirection: explanation2Dir,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.notes_rounded,
+                        color: Colors.white38,
+                        size: 15,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Additional Explanation',
+                        style: styles.feedbackTitleStyle.copyWith(
+                          color: Colors.white54,
+                          fontSize:
+                              (styles.feedbackTitleStyle.fontSize ?? 14) - 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(q.explanation2, style: styles.explanation2Style),
+                ],
+              ),
             ),
           ],
         ],
       ),
     );
   }
+
+  TextDirection _direction(String value) =>
+      value == 'ltr' ? TextDirection.ltr : TextDirection.rtl;
 
   Widget _buildSubmitButton() {
     return SizedBox(

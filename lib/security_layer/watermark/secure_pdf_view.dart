@@ -516,7 +516,14 @@ class _SecurePdfViewPinchState extends State<SecurePdfViewPinch>
 
         if (mounted) {
           final initialPage = _controller.initialPage;
-          if (initialPage != 1) {
+          // Only jump here when pages are already laid out. At first layout
+          // the document future hasn't resolved yet (_pages is empty), so
+          // calculatePageFitMatrix would throw a RangeError — the restored-
+          // page jump is handled by _determinePagesToShow via
+          // pendingInitialPage once the document loads.
+          if (initialPage != 1 &&
+              _pages.isNotEmpty &&
+              initialPage <= _pages.length) {
             final m =
                 _controller.calculatePageFitMatrix(pageNumber: initialPage);
             if (m != null) {
@@ -574,7 +581,16 @@ class _SecurePdfViewPinchState extends State<SecurePdfViewPinch>
       m = _controller.calculatePageFitMatrix(pageNumber: pendingInitialPage);
       shouldNotifyPageChanged = true;
     }
-    m ??= _controller.value;
+    if (m != null) {
+      // ACTUALLY jump to the restored/cached page. Previously the fit
+      // matrix was computed but never applied — the view silently stayed
+      // on page 1, which is why PDF page-resume (PdfPageCache) never
+      // worked. The controller listener re-enters this method with the
+      // pending page already consumed, so there is no recursion loop.
+      _controller.value = m;
+    } else {
+      m = _controller.value;
+    }
 
     final r = m.row0[0];
     final exposed = Rect.fromLTWH(
@@ -1211,13 +1227,35 @@ class _PdfScrollbarState extends State<_PdfScrollbar> {
     if (mounted) setState(() {});
   }
 
-  void _jumpToFraction(double fraction, int pagesCount, double trackHeight) {
+  /// Continuous, smooth scroll: sets the controller's transformation
+  /// directly so the document follows the finger pixel-by-pixel — the old
+  /// page-snapping behavior felt like teleporting between pages.
+  void _dragToFraction(double fraction, double trackHeight) {
+    final docSize = widget.controller.docSize;
+    final viewSize = widget.controller.viewSize;
+    if (docSize == null || viewSize == null) return;
+    final r = widget.controller.value.row0[0];
+    final tx = widget.controller.value.row0[3];
+    final maxTop = max(0.0, docSize.height * r - viewSize.height);
+    final targetTop = fraction.clamp(0.0, 1.0) * maxTop;
+    final m = Matrix4.identity()
+      ..setEntry(0, 0, r)
+      ..setEntry(1, 1, r)
+      ..setEntry(2, 2, 1)
+      ..setEntry(0, 3, tx)
+      ..setEntry(1, 3, -targetTop)
+      ..setEntry(3, 3, 1);
+    widget.controller.value = m;
+  }
+
+  /// Gentle page snap after the drag ends — animates to the nearest page.
+  void _snapToPage(double fraction, int pagesCount) {
     final clamped = fraction.clamp(0.0, 1.0);
     final page = (clamped * (pagesCount - 1)).round() + 1;
     widget.controller.animateToPage(
       pageNumber: page,
-      duration: Duration.zero,
-      curve: Curves.linear,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -1241,12 +1279,16 @@ class _PdfScrollbarState extends State<_PdfScrollbar> {
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTapDown: (details) =>
-              _jumpToFraction(details.localPosition.dy / trackHeight,
-                  pagesCount, trackHeight),
-          onVerticalDragUpdate: (details) =>
-              _jumpToFraction(details.localPosition.dy / trackHeight,
-                  pagesCount, trackHeight),
+          // Tap = intent to go somewhere → smooth animated jump.
+          onTapDown: (details) => _snapToPage(
+              details.localPosition.dy / trackHeight, pagesCount),
+          onVerticalDragStart: (details) => _dragToFraction(
+              details.localPosition.dy / trackHeight, trackHeight),
+          onVerticalDragUpdate: (details) => _dragToFraction(
+              details.localPosition.dy / trackHeight, trackHeight),
+          onVerticalDragEnd: (details) => _snapToPage(
+              (details.localPosition.dy / trackHeight).clamp(0.0, 1.0),
+              pagesCount),
           child: SizedBox(
             width: _hitWidth,
             height: trackHeight,
