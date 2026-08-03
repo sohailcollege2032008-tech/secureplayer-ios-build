@@ -44,6 +44,10 @@ jobs:
       - name: Build the harness
         run: |
           swiftc -O harness/fairplay_harness.swift -o fairplay_harness
+          # macOS refuses SPC generation in an unsigned CLI (OSStatus -42966).
+          # Ad-hoc sign with the FairPlay entitlement and see if that unlocks it.
+          codesign --force --sign - --entitlements harness/fairplay.entitlements fairplay_harness 2>&1
+          codesign -d --entitlements - fairplay_harness 2>&1 || true
 
       - name: Run step1 (old export — MUST PLAY)
         id: step1
