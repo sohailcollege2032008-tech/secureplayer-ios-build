@@ -1,8 +1,11 @@
 name: swift-api-check
 
-# DEBUG-ONLY: typechecks candidate AVContentKeyResponse initializer forms on
-# the free macOS runner to pin down the exact SDK signature before Osama burns
-# a Codemagic build. Push to fairplay-harness to iterate.
+# DEBUG-ONLY: verifies the EXACT Swift files that will be compiled in Osama's
+# Codemagic build — fetches FairplayContentKeyDelegate.swift and
+# FairplayDiagnostics.swift from origin/debug-fairplay-logviewer (the build
+# branch) and typechecks them together on the free macOS runner. This is the
+# pre-flight gate: nobody asks Osama for a Codemagic build until this is
+# green. Push to fairplay-harness to iterate.
 
 on:
   push:
@@ -16,8 +19,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Typecheck AVContentKeyResponse candidate forms
+      - name: Typecheck the real delegate files from the build branch
         run: |
-          echo "=== swiftc -typecheck harness/avck_sig_check.swift ==="
-          swiftc -typecheck harness/avck_sig_check.swift 2>&1 || true
-          echo "=== done (any lines above marked error = invalid form) ==="
+          set -e
+          git fetch origin debug-fairplay-logviewer
+          mkdir -p /tmp/fpcheck
+          git show origin/debug-fairplay-logviewer:vendor/better_player_plus/ios/Classes/FairplayContentKeyDelegate.swift > /tmp/fpcheck/FairplayContentKeyDelegate.swift
+          git show origin/debug-fairplay-logviewer:vendor/better_player_plus/ios/Classes/FairplayDiagnostics.swift > /tmp/fpcheck/FairplayDiagnostics.swift
+          echo "=== swiftc -typecheck (real files, as committed) ==="
+          swiftc -typecheck \
+            /tmp/fpcheck/FairplayContentKeyDelegate.swift \
+            /tmp/fpcheck/FairplayDiagnostics.swift
+          echo "=== TYPECHECK PASSED — safe to ask Osama for a Codemagic build ==="
