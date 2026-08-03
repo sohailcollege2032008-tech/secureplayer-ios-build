@@ -246,8 +246,31 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
 
     func handleStreamingContentKeyRequest(keyRequest: AVContentKeyRequest) {
         guard let contentKeyIdentifierString = keyRequest.identifier as? String,
-              let contentKeyIdentifierURL = URL(string: contentKeyIdentifierString),
-              let assetIDString = contentKeyIdentifierURL.host else {
+              let contentKeyIdentifierURL = URL(string: contentKeyIdentifierString) else {
+            FairplayDiagnostics.log(
+                "ABORT: could not parse identifier "
+                + "\(String(describing: keyRequest.identifier))"
+            )
+            keyRequest.processContentKeyResponseError(FairplayError.invalidRequestConfig)
+            return
+        }
+
+        // Legacy (non-FairPlay) content key — e.g. the AES-128 key of a
+        // mixed-encryption package (FairPlay video + AES-128 TS audio).
+        // Once an asset is a contentKeySession recipient, AVFoundation
+        // routes EVERY key request for it through this delegate — including
+        // plain AES-128 ones whose EXT-X-KEY URI is an http:// URL. The
+        // identifier IS that full URL (with ?t= already appended by the
+        // manifest rewrite); fetch it and hand back the raw 16 key bytes.
+        // This is the branch Apple's HLS Catalog sample carries for non-skd
+        // identifiers and that was never ported here because everything was
+        // FairPlay-only until the audio rendition fix.
+        if contentKeyIdentifierURL.scheme?.lowercased() != "skd" {
+            provideLegacyKey(keyRequest: keyRequest, url: contentKeyIdentifierURL)
+            return
+        }
+
+        guard let assetIDString = contentKeyIdentifierURL.host else {
             FairplayDiagnostics.log(
                 "ABORT: could not parse assetID from identifier "
                 + "\(String(describing: keyRequest.identifier)) — a skd:// host that "
@@ -272,6 +295,40 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
             )
             provideOnlineKey(keyRequest: keyRequest, assetID: assetIDString)
         }
+    }
+
+    /// Fetches a non-FairPlay content key (AES-128 etc.) from its URL — which
+    /// is our local shelf server's /key route, already carrying ?t=. The raw
+    /// response bytes ARE the key; hand them to AVFoundation via
+    /// AVContentKeyResponse(keyData:) so AVPlayer can decrypt the audio
+    /// segments.
+    private func provideLegacyKey(keyRequest: AVContentKeyRequest, url: URL) {
+        FairplayDiagnostics.log(
+            "legacy (non-FairPlay) key request: \(url.absoluteString)"
+        )
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            guard let self = self else { return }
+            if let error = error {
+                FairplayDiagnostics.log(
+                    "legacy key fetch ERROR: \(FairplayDiagnostics.describe(error))"
+                )
+                keyRequest.processContentKeyResponseError(error)
+                return
+            }
+            guard let data = data, data.count == 16 else {
+                let raw = String(data: data ?? Data(), encoding: .utf8) ?? "<no body>"
+                FairplayDiagnostics.log(
+                    "legacy key fetch bad payload: "
+                    + "\(data?.count ?? 0) bytes, \(raw.prefix(200))"
+                )
+                keyRequest.processContentKeyResponseError(FairplayError.noCkcReturnedByKsm(raw))
+                return
+            }
+            keyRequest.processContentKeyResponse(
+                AVContentKeyResponse(keyData: data)
+            )
+            FairplayDiagnostics.log("legacy key delivered (\(data.count) bytes)")
+        }.resume()
     }
 
     private func provideOnlineKey(keyRequest: AVContentKeyRequest, assetID: String) {
@@ -321,6 +378,14 @@ extension FairplayContentKeyDelegate {
               let assetIDString = contentKeyIdentifierURL.host,
               let assetIDData = assetIDString.data(using: .utf8) else {
             keyRequest.processContentKeyResponseError(FairplayError.invalidRequestConfig)
+            return
+        }
+
+        // Same legacy-key guard as the streaming path: a non-skd identifier
+        // (http://... AES-128 key URI) must be answered with the raw key
+        // bytes, never sent down the FairPlay SPC/CKC flow.
+        if contentKeyIdentifierURL.scheme?.lowercased() != "skd" {
+            provideLegacyKey(keyRequest: keyRequest, url: contentKeyIdentifierURL)
             return
         }
 
