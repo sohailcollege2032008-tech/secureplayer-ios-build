@@ -325,7 +325,7 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
                 return
             }
             keyRequest.processContentKeyResponse(
-                AVContentKeyResponse(keyData: data)
+                AVContentKeyResponse(clearKeyData: data)
             )
             FairplayDiagnostics.log("legacy key delivered (\(data.count) bytes)")
         }.resume()
