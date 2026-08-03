@@ -29,7 +29,25 @@ if fm.fileExists(atPath: path + "/master.m3u8") {
     server.arguments = ["-m", "http.server", "18345", "--directory", dir.path]
     try? server.run()
     print("FMT: serving \(dir.path) on :18345")
-    Thread.sleep(forTimeInterval: 1)
+    // Wait until the server actually accepts connections (AVPlayer fails
+    // with NSURLError -1004 if it starts before the listener is up).
+    var up = false
+    for _ in 0..<20 {
+        let probe = URLSession.shared.dataTask(with: URL(string: "http://127.0.0.1:18345/master.m3u8")!)
+        // synchronous-ish probe: use a semaphore
+        let sem = DispatchSemaphore(value: 0)
+        var ok = false
+        let task = URLSession.shared.dataTask(with: URL(string: "http://127.0.0.1:18345/master.m3u8")!) { _, resp, _ in
+            ok = (resp as? HTTPURLResponse)?.statusCode == 200
+            sem.signal()
+        }
+        task.resume()
+        _ = sem.wait(timeout: .now() + 3)
+        if ok { up = true; break }
+        Thread.sleep(forTimeInterval: 0.5)
+    }
+    print("FMT: server up = \(up)")
+    Thread.sleep(forTimeInterval: 0.5)
     url = URL(string: "http://127.0.0.1:18345/master.m3u8")!
 } else {
     url = URL(fileURLWithPath: path)
