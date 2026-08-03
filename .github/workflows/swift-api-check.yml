@@ -1,13 +1,12 @@
 name: swift-api-check
 
-# DEBUG-ONLY: verifies the EXACT Swift files that will be compiled in Osama's
-# Codemagic build — fetches FairplayContentKeyDelegate.swift and
-# FairplayDiagnostics.swift from origin/debug-fairplay-logviewer (the build
-# branch) and typechecks them together on the free macOS runner using the
-# NEWEST Xcode installed (must match Codemagic's Xcode 26.x SDK — an older
-# Xcode 15 SDK produces false "no member" errors on newer APIs). This is the
-# pre-flight gate: nobody asks Osama for a Codemagic build until this is
-# green. Push to fairplay-harness to iterate.
+# DEBUG-ONLY: pre-flight gate before asking Osama for a Codemagic build.
+# Fetches the EXACT Swift files from origin/debug-fairplay-logviewer (the
+# build branch) and typechecks them against the iOS SDK with the newest
+# Xcode — the same compile Codemagic performs. Also probes the AVFoundation
+# headers to explain any discrepancy between macOS-SDK and iOS-SDK APIs
+# (persistable content keys are iOS/tvOS-only APIs).
+# Push to fairplay-harness to iterate.
 
 on:
   push:
@@ -31,15 +30,24 @@ jobs:
           sudo xcode-select -s "$NEWEST"
           swiftc --version
 
-      - name: Typecheck the real delegate files from the build branch
+      - name: Probe AVFoundation headers (macOS vs iOS SDK)
+        run: |
+          echo "=== macOS SDK AVContentKeyRequest.h ==="
+          grep -n "PersistableContentKeyRequest" "$(xcrun --sdk macosx --show-sdk-path)/System/Library/Frameworks/AVFoundation.framework/Headers/AVContentKeyRequest.h" 2>/dev/null || echo "NOT FOUND in macOS SDK header"
+          echo "=== iOS SDK AVContentKeyRequest.h ==="
+          grep -n "PersistableContentKeyRequest" "$(xcrun --sdk iphoneos --show-sdk-path)/System/Library/Frameworks/AVFoundation.framework/Headers/AVContentKeyRequest.h" 2>/dev/null || echo "NOT FOUND in iOS SDK header"
+
+      - name: Typecheck the real delegate files against the iOS SDK (Codemagic-equivalent)
         run: |
           set -e
           git fetch origin debug-fairplay-logviewer
           mkdir -p /tmp/fpcheck
           git show origin/debug-fairplay-logviewer:vendor/better_player_plus/ios/Classes/FairplayContentKeyDelegate.swift > /tmp/fpcheck/FairplayContentKeyDelegate.swift
           git show origin/debug-fairplay-logviewer:vendor/better_player_plus/ios/Classes/FairplayDiagnostics.swift > /tmp/fpcheck/FairplayDiagnostics.swift
-          echo "=== swiftc -typecheck (real files, as committed) ==="
+          echo "=== swiftc -typecheck vs iOS SDK (arm64-apple-ios15.0) ==="
           swiftc -typecheck \
+            -sdk "$(xcrun --sdk iphoneos --show-sdk-path)" \
+            -target arm64-apple-ios15.0 \
             /tmp/fpcheck/FairplayContentKeyDelegate.swift \
             /tmp/fpcheck/FairplayDiagnostics.swift
-          echo "=== TYPECHECK PASSED — safe to ask Osama for a Codemagic build ==="
+          echo "=== TYPECHECK PASSED (iOS SDK) — safe to ask Osama for a Codemagic build ==="
