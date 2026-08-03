@@ -100,6 +100,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
   // error screen only renders on an exception. This watchdog converts "stuck
   // forever" into a readable report.
   Timer? _fairplayStallWatchdog;
+  Timer? _fairplayLogRefresher;
   bool _fairplayProducedFrames = false;
   // Loaded from disk on init so popups don't re-fire on re-entry.
   final Set<String> _triggeredPopupIds = {};
@@ -202,6 +203,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
     stopSecurityGuard();
     _progressTimer?.cancel();
     _fairplayStallWatchdog?.cancel();
+    _fairplayLogRefresher?.cancel();
     _controlsHideTimer?.cancel();
     _seekFeedbackTimer?.cancel();
     _savePosition();
@@ -594,6 +596,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
   void _startFairplayStallWatchdog() {
     if (!Platform.isIOS || !_fairplayPackageAvailable) return;
     _fairplayStallWatchdog?.cancel();
+    _fairplayLogRefresher?.cancel();
     _fairplayProducedFrames = false;
     _fairplayStallWatchdog = Timer(const Duration(seconds: 20), () async {
       if (!mounted || _fairplayProducedFrames || _playerErrorMessage != null) {
@@ -608,6 +611,28 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
             '--- FairPlay log ---\n'
             '${diagnostics.isEmpty ? '(log empty — the native key delegate was never called)' : diagnostics}';
       });
+      // DEBUG ONLY (branch debug-fairplay-logviewer): the first snapshot is
+      // taken while the KSM call is still in flight (its own timeout is 25s,
+      // and the audio key arrives AFTER the video key). Keep re-reading the
+      // log file every 3s so the screen shows the FULL outcome — KSM timeout
+      // at +25s, CKC delivery, the legacy AES-128 audio key request — instead
+      // of freezing at the +20s moment. Cancelled on playhead movement or
+      // dispose.
+      _fairplayLogRefresher = Timer.periodic(const Duration(seconds: 3), (_) async {
+        if (!mounted || _fairplayProducedFrames) {
+          _fairplayLogRefresher?.cancel();
+          return;
+        }
+        final fresh = await FairplayService.readDiagnostics();
+        if (!mounted) return;
+        setState(() {
+          _playerErrorMessage =
+              'Video did not start within 20 seconds.\n'
+              '(log refresh is live — waiting for the KSM verdict)\n\n'
+              '--- FairPlay log ---\n'
+              '${fresh.isEmpty ? '(log empty)' : fresh}';
+        });
+      });
     });
   }
 
@@ -620,6 +645,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
       if (pos != null && pos > Duration.zero) {
         _fairplayProducedFrames = true;
         _fairplayStallWatchdog?.cancel();
+        _fairplayLogRefresher?.cancel();
       }
     }
 
