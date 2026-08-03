@@ -1,0 +1,23 @@
+name: swift-api-check
+
+# DEBUG-ONLY: typechecks candidate AVContentKeyResponse initializer forms on
+# the free macOS runner to pin down the exact SDK signature before Osama burns
+# a Codemagic build. Push to fairplay-harness to iterate.
+
+on:
+  push:
+    branches: [fairplay-harness]
+  workflow_dispatch:
+
+jobs:
+  avck-signature:
+    runs-on: macos-14
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Typecheck AVContentKeyResponse candidate forms
+        run: |
+          echo "=== swiftc -typecheck harness/avck_sig_check.swift ==="
+          swiftc -typecheck harness/avck_sig_check.swift 2>&1 || true
+          echo "=== done (any lines above marked error = invalid form) ==="
