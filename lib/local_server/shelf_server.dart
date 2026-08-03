@@ -56,7 +56,10 @@ Handler buildShelfHandler({
 
   router.get('/key/<lid>',
       (Request req, String lid) async {
-    if (!_isValidToken(req, sessionToken)) return Response.forbidden('');
+    // AVPlayer fetches the AES-128 key URI verbatim from the manifest — it
+    // does NOT send an Authorization header. Accept the session token via
+    // ?t= (the manifest rewrite appends it) OR the header.
+    if (!_isValidTokenOrParam(req, sessionToken)) return Response.forbidden('');
     return keyHandler(Uri.decodeComponent(lid), keyHex);
   });
 

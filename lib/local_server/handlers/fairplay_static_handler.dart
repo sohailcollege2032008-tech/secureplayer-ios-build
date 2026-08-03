@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:shelf/shelf.dart';
 
+import '../../core/constants/server_constants.dart';
 import '../security/path_safety.dart';
 
 /// Serves a FairPlay package's files (manifests + fMP4/CMAF segments) over
@@ -45,7 +46,7 @@ Future<Response> fairplayStaticHandler(
   if (filename.endsWith('.m3u8')) {
     final base = 'http://$host:$port/fairplay/$lectureId/$videoId';
     return Response.ok(
-      _absolutizeManifestUrls(await file.readAsString(), base, token),
+      _absolutizeManifestUrls(await file.readAsString(), base, token, port),
       headers: const {
         'Content-Type': 'application/vnd.apple.mpegurl',
         'Cache-Control': 'no-store',
@@ -58,12 +59,22 @@ Future<Response> fairplayStaticHandler(
 
 /// Rewrites the relative filenames Shaka Packager emits into absolute URLs
 /// pointing back at this server, carrying the session token.
-String _absolutizeManifestUrls(String manifest, String base, String token) {
+String _absolutizeManifestUrls(String manifest, String base, String token, int actualPort) {
+  // AES-128 audio key URIs (mixed-encryption packages: FairPlay video +
+  // AES-128 TS audio). ffmpeg bakes an absolute http://127.0.0.1:PORT/key/…
+  // URI at packaging time; the deterministic port matches portFor(lectureId),
+  // but the token is per-session and must be appended, and the port must be
+  // corrected to the actually-bound one if the deterministic bind failed.
+  final withKeyToken = manifest.replaceAllMapped(
+    RegExp(r'URI="http://127\.0\.0\.1:\d+/key/([^"/]+)"'),
+    (m) => 'URI="http://${ServerConstants.localhost}:$actualPort/key/${m.group(1)}?t=$token"',
+  );
+
   // Quoted references: EXT-X-MEDIA URI="audio.m3u8" and EXT-X-MAP
   // URI="video_init.mp4". Deliberately does NOT match the FairPlay key URI
   // "skd://..." — that has no .m3u8/.mp4 extension so this never touches it,
   // which matters because rewriting it would break the key request entirely.
-  var rewritten = manifest.replaceAllMapped(
+  var rewritten = withKeyToken.replaceAllMapped(
     RegExp(r'URI="([\w.-]+\.(?:m3u8|mp4))"'),
     (m) => 'URI="$base/${m.group(1)}?t=$token"',
   );
@@ -71,7 +82,7 @@ String _absolutizeManifestUrls(String manifest, String base, String token) {
   // Bare filename lines: the master playlist's "video.m3u8" reference, and
   // every segment line in a sub-playlist (video_1.m4s, ...).
   return rewritten.replaceAllMapped(
-    RegExp(r'^([\w.-]+\.(?:m3u8|mp4|m4s))$', multiLine: true),
+    RegExp(r'^([\w.-]+\.(?:m3u8|mp4|m4s|ts))$', multiLine: true),
     (m) => '$base/${m.group(1)}?t=$token',
   );
 }

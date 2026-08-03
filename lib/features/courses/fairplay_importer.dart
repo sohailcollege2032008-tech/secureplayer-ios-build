@@ -2,10 +2,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart' hide ZipFile;
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_archive/flutter_archive.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/utils/device_id_util.dart';
 import '../../security_layer/fairplay/fairplay_service.dart';
+import '../../security_layer/secure_storage/secure_storage_service.dart';
 
 /// Imports a .secfp bundle (built by Studio's "Export for iOS (FairPlay)",
 /// see encryptor/fairplay_bundle_builder.py) — the FairPlay counterpart to
@@ -39,9 +42,61 @@ class FairplayImporter {
     );
 
     await _discardPersistedContentKeys(lectureId);
+    await _fetchAudioKeyIfMixedPackage(lectureId, metadata, destDir);
     await _writeCompatibilityMarker(lectureId, metadata);
 
     return lectureId;
+  }
+
+  /// Mixed-encryption packages (FairPlay video + AES-128 TS audio) carry the
+  /// audio AES key in course_keys as aes_key_hex and serve it to AVPlayer
+  /// via the local /key route (see shelf_server.dart). That key must land in
+  /// flutter_secure_storage under the lectureId — the exact slot the .sec
+  /// path already uses — so the local server can serve it. Fetched at import
+  /// time, enrollment-gated via the same getCourseKey the .sec path calls.
+  ///
+  /// Detected by scanning the extracted audio playlists for METHOD=AES-128
+  /// (the FairPlay video playlists use skd:// SAMPLE-AES and never match).
+  /// Old pure-FairPlay packages have no such playlist — nothing happens.
+  static Future<void> _fetchAudioKeyIfMixedPackage(
+    String lectureId,
+    Map<String, dynamic> metadata,
+    Directory packageDir,
+  ) async {
+    try {
+      final videos = (metadata['videos'] as List? ?? []);
+      var hasAesAudio = false;
+      for (final v in videos) {
+        final audioPl = File(
+            '${packageDir.path}/videos/${v['id']}/audio.m3u8');
+        if (await audioPl.exists()) {
+          final text = await audioPl.readAsString();
+          if (text.contains('METHOD=AES-128')) {
+            hasAesAudio = true;
+            break;
+          }
+        }
+      }
+      if (!hasAesAudio) return;
+
+      final deviceId = await DeviceIdUtil.getDeviceId();
+      final callable = FirebaseFunctions.instanceFor(region: 'us-central1')
+          .httpsCallable('getCourseKey',
+              options: HttpsCallableOptions(
+                  timeout: const Duration(seconds: 20)));
+      final resp = await callable.call({
+        'lectureId': lectureId,
+        'courseId': metadata['course_id'] ?? lectureId,
+        'deviceId': deviceId,
+      });
+      final keyHex = (resp.data as Map<String, dynamic>)['keyHex'] as String?;
+      if (keyHex != null && keyHex.length == 32) {
+        await SecureStorageService().storeKey(lectureId, keyHex);
+      }
+    } catch (_) {
+      // Fails soft: pure-FairPlay packages never hit this, and a failed
+      // audio-key fetch must not block an otherwise-good import.
+    }
   }
 
   /// Deletes any FairPlay content key this device already persisted for

@@ -186,6 +186,30 @@ Future<void> _run(List<String> args) async {
       'suffix Content-Range points at the END of the file',
       'got ${suffix.headers.value('content-range')}');
 
+  print('\n[7] mixed-encryption audio: AES-128 key URI rewrite (new)');
+  // A mixed package's audio.m3u8 carries
+  //   URI="http://127.0.0.1:PORT/key/{lectureId}"
+  // which the handler must rewrite to the actual port AND append ?t=.
+  final audioRes7 = await get('$base/audio.m3u8?t=$_token');
+  final audioBody7 = await audioRes7.transform(utf8.decoder).join();
+  final keyUri = RegExp(r'URI="(http://127\.0\.0\.1:\d+/key/[^"]+)"')
+      .firstMatch(audioBody7)?.group(1);
+  if (keyUri != null) {
+    check(keyUri.contains('?t=$_token'),
+        'AES key URI carries the session token', 'got $keyUri');
+    final keyUrl = Uri.parse(keyUri);
+    check(keyUrl.port == port, 'AES key URI port corrected to actual port',
+        'got ${keyUrl.port} want $port');
+    final keyRes = await get('${keyUrl.path}?t=$_token');
+    final keyBytes = await keyRes.fold<int>(0, (n, c) => n + c.length);
+    check(keyRes.statusCode == 200, '/key route accepts ?t= (HTTP 200)',
+        'got ${keyRes.statusCode}');
+    check(keyBytes == 16, 'AES key served is exactly 16 bytes', 'got $keyBytes');
+  } else {
+    check(audioBody7.contains('METHOD=AES-128'), 'audio uses AES-128 (mixed pkg)');
+    check(!audioBody7.contains('skd://'), 'audio has no FairPlay key (mixed pkg)');
+  }
+
   print('\n${_failures == 0 ? "ALL CHECKS PASSED" : "*** $_failures CHECK(S) FAILED ***"}');
   client.close();
   await server.close(force: true);
