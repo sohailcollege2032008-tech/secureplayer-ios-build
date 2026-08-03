@@ -51,3 +51,13 @@ jobs:
             /tmp/fpcheck/FairplayContentKeyDelegate.swift \
             /tmp/fpcheck/FairplayDiagnostics.swift
           echo "=== TYPECHECK PASSED (iOS SDK) — safe to ask Osama for a Codemagic build ==="
+
+      - name: Typecheck the AVAudioPlayer probe (parallel-audio sink APIs)
+        run: |
+          set -e
+          echo "=== swiftc -typecheck harness/avaudioplayer_probe.swift (iOS SDK) ==="
+          swiftc -typecheck \\
+            -sdk \"\\" \\
+            -target arm64-apple-ios15.0 \\
+            harness/avaudioplayer_probe.swift
+          echo \"=== AVAUDIOPLAYER PROBE PASSED ===\"
