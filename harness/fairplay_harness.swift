@@ -49,13 +49,13 @@ final class FPDelegate: NSObject, AVContentKeySessionDelegate {
         didProvide keyRequest: AVContentKeyRequest
     ) {
         print("HARNESS: key request received for \(String(describing: keyRequest.identifier))")
-        do {
-            try keyRequest.respondByRequestingPersistableContentKeyRequestAndReturnError()
-            print("HARNESS: requested PERSISTABLE key")
-        } catch {
-            print("HARNESS: persistable refused -> online fallback: \(error)")
-            provideOnline(keyRequest)
-        }
+        // macOS AVContentKeyRequest has no
+        // respondByRequestingPersistableContentKeyRequestAndReturnError (iOS-only);
+        // persistable requests arrive via the AVPersistableContentKeyRequest
+        // delegate method below. For this harness an online key is sufficient —
+        // the symptom under test (media load failure AFTER key delivery) is
+        // independent of persistable vs online.
+        provideOnline(keyRequest)
     }
 
     func contentKeySession(
