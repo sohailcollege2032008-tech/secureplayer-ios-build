@@ -4,8 +4,11 @@ name: fairplay-harness
 # macOS runner, printing the REAL AVFoundation error that iOS hides behind
 # "failed to load video : resource un available".
 #
-# Trigger: manual (workflow_dispatch) — never on push.
+# Trigger: push to this branch (workflow files on non-default branches only
+# fire for push events, not workflow_dispatch) — so iterate by committing.
 on:
+  push:
+    branches: [fairplay-harness]
   workflow_dispatch:
 
 jobs:
