@@ -48,6 +48,16 @@ jobs:
           # Ad-hoc sign with the FairPlay entitlement and see if that unlocks it.
           codesign --force --sign - --entitlements harness/fairplay.entitlements fairplay_harness 2>&1
           codesign -d --entitlements - fairplay_harness 2>&1 || true
+          swiftc -O harness/fmt_harness.swift -o fmt_harness
+
+      - name: FORMAT TEST — mixed fMP4 video + TS AES-128 audio (no DRM)
+        run: |
+          echo "===== FORMAT TEST: clear fMP4 video + AES-128 TS audio ====="
+          cd harness/data/fmt
+          unzip -o fmt_package.zip -d pkg
+          cd ../../..
+          ./fmt_harness harness/data/fmt/pkg
+          echo "fmt exit: $?"
 
       - name: Run step1 (old export — MUST PLAY)
         id: step1
