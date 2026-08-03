@@ -1,0 +1,80 @@
+name: fairplay-harness
+
+# DEBUG-ONLY: runs the macOS AVPlayer FairPlay harness on a free public-repo
+# macOS runner, printing the REAL AVFoundation error that iOS hides behind
+# "failed to load video : resource un available".
+#
+# Trigger: manual (workflow_dispatch) — never on push.
+on:
+  workflow_dispatch:
+
+jobs:
+  harness:
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sign in as the FairPlay demo account (REST, no SDK needed)
+        id: auth
+        env:
+          API_KEY: ${{ secrets.FIREBASE_WEB_API_KEY }}
+          EMAIL: screenshot.demo@secureplayer.test
+          PASSWORD: ${{ secrets.FAIRPLAY_DEMO_PASSWORD }}
+        run: |
+          if [ -z "$API_KEY" ] || [ -z "$PASSWORD" ]; then
+            echo "::error::missing secrets FIREBASE_WEB_API_KEY / FAIRPLAY_DEMO_PASSWORD"
+            exit 1
+          fi
+          RESP=$(curl -s -X POST \
+            "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\",\"returnSecureToken\":true}")
+          TOKEN=$(echo "$RESP" | python3 -c "import sys,json;print(json.load(sys.stdin).get('idToken',''))")
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Firebase sign-in failed: $RESP"
+            exit 1
+          fi
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+          echo "Signed in OK"
+
+      - name: Build the harness
+        run: |
+          swiftc -O harness/fairplay_harness.swift -o fairplay_harness
+
+      - name: Run step1 (old export — MUST PLAY)
+        id: step1
+        env:
+          HARNESS_LECTURE: 1b6822cf_80fd_4213_97be_9cb9a7b6d171
+          HARNESS_VIDEO: vid_2c1291bd
+          HARNESS_COURSE: 1a7db0fe_4b08_4bb3_bdac_b635838509cb
+          IDTOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          echo "===== STEP 1 (clear_lead 5, DEFAULT=NO) — expect PLAY ====="
+          ./fairplay_harness harness/data/step1_old.secfp "$IDTOKEN"
+          echo "step1 exit: $?"
+
+      - name: Run step3 (new export — MUST FREEZE)
+        id: step3
+        if: always()
+        env:
+          HARNESS_LECTURE: 1b6822cf_80fd_4213_97be_9cb9a7b6d171
+          HARNESS_VIDEO: vid_2c1291bd
+          HARNESS_COURSE: 1a7db0fe_4b08_4bb3_bdac_b635838509cb
+          IDTOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          echo "===== STEP 3 (clear_lead 0, DEFAULT=YES) — expect FREEZE ====="
+          ./fairplay_harness harness/data/step3_new.secfp "$IDTOKEN"
+          echo "step3 exit: $?"
+
+      - name: Run step4 (clear_lead 5, DEFAULT=YES — the user's idea)
+        if: always()
+        env:
+          HARNESS_LECTURE: 1b6822cf_80fd_4213_97be_9cb9a7b6d171
+          HARNESS_VIDEO: vid_2c1291bd
+          HARNESS_COURSE: 1a7db0fe_4b08_4bb3_bdac_b635838509cb
+          IDTOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          echo "===== STEP 4 (clear_lead 5, DEFAULT=YES) ====="
+          ./fairplay_harness harness/data/step4_cle5yes.secfp "$IDTOKEN"
+          echo "step4 exit: $?"
