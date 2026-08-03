@@ -2,18 +2,25 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart' hide ZipFile;
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_archive/flutter_archive.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/utils/device_id_util.dart';
 import '../../security_layer/fairplay/fairplay_service.dart';
+import '../../security_layer/secure_storage/secure_storage_service.dart';
 
 /// Imports a .secfp bundle (built by Studio's "Export for iOS (FairPlay)",
 /// see encryptor/fairplay_bundle_builder.py) — the FairPlay counterpart to
 /// SecImporter for .sec files. Deliberately separate: the two formats are
-/// not interchangeable, and this one needs no key-fetch step at import time
-/// (unlike .sec, where getCourseKey is called during import) — FairPlay
-/// keys are fetched per-video, lazily, by getFairplayLicense the first time
-/// that video is actually played (see FairplayContentKeyDelegate.swift).
+/// not interchangeable. The FairPlay VIDEO key is fetched per-video, lazily,
+/// by getFairplayLicense the first time that video is actually played (see
+/// FairplayContentKeyDelegate.swift) — but since the parallel-audio feature
+/// (audio as a separate encrypted sibling file, see
+/// parallel_audio_loader.dart), the lecture's plain AES course key
+/// (aes_key_hex, the same one .sec import fetches) is needed at PLAY time to
+/// decrypt that audio file, so it is fetched here during import exactly like
+/// SecImporter does and stored in secure storage.
 ///
 /// Uses flutter_archive (native C++), never the pure-Dart archive package,
 /// for the same reason SecImporter does — safe for large files, unlike
@@ -41,7 +48,44 @@ class FairplayImporter {
     await _discardPersistedContentKeys(lectureId);
     await _writeCompatibilityMarker(lectureId, metadata);
 
+    // Parallel-audio support: fetch the lecture's AES course key so the
+    // audio sibling file can be decrypted at play time. Fails soft — the
+    // video itself never needs this key, and a video without a separate
+    // audio file doesn't either.
+    await _fetchAndStoreCourseKey(lectureId, metadata);
+
     return lectureId;
+  }
+
+  /// Fetches the lecture's AES course key (getCourseKey — same enrollment +
+  /// device-binding checks the .sec path already passes) and stores it in
+  /// secure storage under the standard course-key slot, so
+  /// ParallelAudioLoader can decrypt videos/{videoId}/audio.m4a locally.
+  /// Best-effort: any failure only affects parallel audio, never the video.
+  static Future<void> _fetchAndStoreCourseKey(
+    String lectureId,
+    Map<String, dynamic> metadata,
+  ) async {
+    try {
+      final courseId = metadata['course_id'] as String?;
+      if (courseId == null || courseId.isEmpty) return;
+      final deviceId = await DeviceIdUtil.getDeviceId();
+      final callable = FirebaseFunctions.instanceFor(region: 'us-central1')
+          .httpsCallable('getCourseKey',
+              options: HttpsCallableOptions(timeout: const Duration(seconds: 20)));
+      final resp = await callable.call({
+        'lectureId': lectureId,
+        'courseId': courseId,
+        'deviceId': deviceId,
+        'platform': 'ios',
+      });
+      final data = resp.data as Map<String, dynamic>;
+      final keyHex = data['keyHex'] as String?;
+      if (keyHex == null || keyHex.isEmpty) return;
+      await SecureStorageService().storeKey(lectureId, keyHex);
+    } catch (_) {
+      // Deliberately silent — see the doc comment.
+    }
   }
 
   /// Deletes any FairPlay content key this device already persisted for

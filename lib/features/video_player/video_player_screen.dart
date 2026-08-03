@@ -35,6 +35,9 @@ import '../../core/services/pdf_page_cache.dart';
 import '../../features/auth/auth_providers.dart';
 import '../../features/quiz/quiz_provider.dart';
 import '../../local_server/server_provider.dart';
+import 'ios_audio_sink.dart';
+import 'parallel_audio_loader.dart';
+import 'parallel_audio_sync.dart';
 import '../../security_layer/fairplay/fairplay_service.dart';
 import '../../security_layer/runtime_guard/security_guard_gate.dart';
 import '../../security_layer/runtime_guard/security_guard_state.dart';
@@ -124,6 +127,18 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
   // initState, before the player watch in build() can possibly call
   // _initPlayer(), so the branch there never races an unresolved check.
   bool _fairplayPackageAvailable = false;
+
+  // ── Parallel audio (separate encrypted audio file synced to the video) ──
+  // iOS FairPlay videos are silent by design (step2-style packages carry no
+  // audio track at all — that was the whole fix for the DEFAULT=YES freeze),
+  // so the audio ships as a sibling encrypted file in the .secfp and plays
+  // through AVAudioPlayer in lock-step with AVPlayer (see parallel_audio_sync).
+  // The metadata flag gates everything: no flag -> no behavior change.
+  final ParallelAudioLoader _parallelAudioLoader = ParallelAudioLoader();
+  IosAudioSink? _audioSink;
+  ParallelAudioSync? _audioSync;
+  Timer? _audioSyncTimer;
+  String? _audioTempPath;
 
   // ── Custom controls ───────────────────────────────────────────────────────
   bool _controlsVisible = true;
@@ -234,6 +249,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
     // autoDispose:false in the configuration above.
     Future.microtask(() => ctrl?.dispose(forceDispose: true));
     _disposeWindowsPlayer();
+    _teardownParallelAudio();
     final docsToClose = Map<String, PdfDocument>.from(_pdfDocs);
     final controllersToDispose =
         Map<String, SecurePdfControllerPinch>.from(_pdfControllers);
@@ -256,6 +272,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
       } else {
         _controller?.pause();
       }
+      _syncAudioTick();
     } else if (state == AppLifecycleState.resumed) {
       notifyAppResumedForSecurity();
     }
@@ -432,12 +449,74 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
         _checkPopupTrigger,
       );
       _startFairplayStallWatchdog();
+      _maybeStartParallelAudio();
       if (mounted) setState(() {});
     }).catchError((Object e) {
       if (mounted) {
         setState(() => _playerErrorMessage = 'FairPlay playback failed: $e');
       }
     });
+  }
+
+  /// Decrypts the package's separate audio file (if the video declares one)
+  /// and starts it synced to the video clock. Idempotent; fails soft with a
+  /// debugPrint rather than taking the video down with it.
+  Future<void> _maybeStartParallelAudio() async {
+    if (_audioSink != null || !mounted) return;
+    try {
+      final tempPath =
+          await _parallelAudioLoader.prepare(widget.lectureId, widget.videoId);
+      if (tempPath == null || !mounted) return; // no parallel audio declared
+      const channel = MethodChannel('secureplayer/audio_sync');
+      final sink = IosAudioSink(channel);
+      await channel.invokeMethod('init', {'id': 'default', 'path': tempPath});
+      _audioSink = sink;
+      _audioSync = ParallelAudioSync(sink);
+      _audioTempPath = tempPath;
+      if (_playbackSpeed != 1.0) {
+        await sink.setRate(_playbackSpeed);
+      }
+      // The iOS position tick (1s timer) is too coarse for drift correction;
+      // drive the sync at 250ms while the audio is active.
+      _audioSyncTimer?.cancel();
+      _audioSyncTimer = Timer.periodic(
+        const Duration(milliseconds: 250),
+        (_) => _syncAudioTick(),
+      );
+      _syncAudioTick();
+    } catch (e) {
+      debugPrint('Parallel audio failed to start: $e');
+      _teardownParallelAudio();
+    }
+  }
+
+  /// Pushes the current video state into the audio sync policy.
+  void _syncAudioTick() {
+    final sync = _audioSync;
+    if (sync == null) return;
+    final vc = _controller?.videoPlayerController;
+    if (vc == null) return;
+    sync.onVideoTick(
+      videoPosition: vc.value.position,
+      videoPlaying: vc.value.isPlaying,
+      videoRate: _playbackSpeed,
+    );
+  }
+
+  void _teardownParallelAudio() {
+    _audioSyncTimer?.cancel();
+    _audioSyncTimer = null;
+    final sink = _audioSink;
+    _audioSink = null;
+    _audioSync = null;
+    if (sink != null) {
+      sink.dispose();
+    }
+    final tempPath = _audioTempPath;
+    _audioTempPath = null;
+    if (tempPath != null) {
+      _parallelAudioLoader.clearCache(widget.lectureId, widget.videoId);
+    }
   }
 
   void _startWindowsPlayer(String hlsUrl, String sessionToken) {
@@ -643,10 +722,12 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
         // Persist before showing so re-entry never re-triggers.
         await _persistTriggeredPopup(q.id);
         _controller!.pause();
+        _syncAudioTick();
         _showPopupQuiz(q);
         break;
       }
     }
+    _syncAudioTick();
   }
 
   Future<void> _showPopupQuiz(Quiz quiz) async {
@@ -678,20 +759,30 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
 
   void _playerPlay() {
     Platform.isWindows ? _mkPlayer?.play() : _controller?.play();
+    _syncAudioTick();
   }
 
   void _playerPause() {
     Platform.isWindows ? _mkPlayer?.pause() : _controller?.pause();
+    _syncAudioTick();
   }
 
   void _playerSeekTo(Duration pos) {
     Platform.isWindows ? _mkPlayer?.seek(pos) : _controller?.seekTo(pos);
+    final sync = _audioSync;
+    if (sync != null) {
+      sync.onVideoSeek(
+        pos,
+        videoPlaying: _controller?.videoPlayerController?.value.isPlaying ?? false,
+      );
+    }
   }
 
   void _playerSetSpeed(double speed) {
     Platform.isWindows
         ? _mkPlayer?.setRate(speed)
         : _controller?.setSpeed(speed);
+    _syncAudioTick();
   }
 
   Duration _playerPosition() {

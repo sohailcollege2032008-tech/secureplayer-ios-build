@@ -24,6 +24,12 @@ import UIKit
       let securityEventChannel = FlutterEventChannel(
         name: "secureplayer/security_events", binaryMessenger: controller.binaryMessenger)
       securityEventChannel.setStreamHandler(plugin)
+
+      let audioSyncChannel = FlutterMethodChannel(
+        name: "secureplayer/audio_sync", binaryMessenger: controller.binaryMessenger)
+      audioSyncChannel.setMethodCallHandler { call, result in
+        AudioSyncChannel.handle(call: call, result: result)
+      }
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
