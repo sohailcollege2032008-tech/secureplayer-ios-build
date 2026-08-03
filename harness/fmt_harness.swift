@@ -93,7 +93,14 @@ let statusTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _
 }
 RunLoop.current.add(statusTimer, forMode: .common)
 
-let progressTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
+let progressTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+    // Watch tracks continuously — audio track may appear after readyToPlay
+    for t in item.tracks {
+        let mt = t.assetTrack?.mediaType.rawValue ?? "?"
+        if mt == AVMediaType.audio.rawValue, t.isEnabled {
+            audioTrackSeen = true
+        }
+    }
     let pos = CMTimeGetSeconds(player.currentTime())
     let dur = CMTimeGetSeconds(item.duration)
     print(String(format: "FMT: pos=%.2f dur=%.2f rate=%.2f status=%d audioTrack=%d",
