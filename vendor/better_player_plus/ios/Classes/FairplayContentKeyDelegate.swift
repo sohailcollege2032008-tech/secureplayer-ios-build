@@ -300,8 +300,9 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
     /// Fetches a non-FairPlay content key (AES-128 etc.) from its URL — which
     /// is our local shelf server's /key route, already carrying ?t=. The raw
     /// response bytes ARE the key; hand them to AVFoundation via
-    /// AVContentKeyResponse(keyData:) so AVPlayer can decrypt the audio
-    /// segments.
+    /// AVContentKeyResponse(clearKeyData:initializationVector:) so AVPlayer
+    /// can decrypt the audio segments. initializationVector is nil because
+    /// the IV comes from the HLS playlist itself (IV=0x000...0 in our m3u8).
     private func provideLegacyKey(keyRequest: AVContentKeyRequest, url: URL) {
         FairplayDiagnostics.log(
             "legacy (non-FairPlay) key request: \(url.absoluteString)"
@@ -325,7 +326,7 @@ public class FairplayContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
                 return
             }
             keyRequest.processContentKeyResponse(
-                AVContentKeyResponse(clearKeyData: data)
+                AVContentKeyResponse(clearKeyData: data, initializationVector: nil)
             )
             FairplayDiagnostics.log("legacy key delivered (\(data.count) bytes)")
         }.resume()
