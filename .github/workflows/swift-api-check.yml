@@ -3,7 +3,9 @@ name: swift-api-check
 # DEBUG-ONLY: verifies the EXACT Swift files that will be compiled in Osama's
 # Codemagic build — fetches FairplayContentKeyDelegate.swift and
 # FairplayDiagnostics.swift from origin/debug-fairplay-logviewer (the build
-# branch) and typechecks them together on the free macOS runner. This is the
+# branch) and typechecks them together on the free macOS runner using the
+# NEWEST Xcode installed (must match Codemagic's Xcode 26.x SDK — an older
+# Xcode 15 SDK produces false "no member" errors on newer APIs). This is the
 # pre-flight gate: nobody asks Osama for a Codemagic build until this is
 # green. Push to fairplay-harness to iterate.
 
@@ -14,10 +16,20 @@ on:
 
 jobs:
   avck-signature:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select the newest Xcode (match Codemagic's SDK generation)
+        run: |
+          NEWEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | grep -v "beta\|Beta" | sort -V | tail -1)
+          if [ -z "$NEWEST" ]; then
+            NEWEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          fi
+          echo "Using: $NEWEST"
+          sudo xcode-select -s "$NEWEST"
+          swiftc --version
 
       - name: Typecheck the real delegate files from the build branch
         run: |
