@@ -5,7 +5,52 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/quiz/quiz_history_service.dart';
+import '../../security_layer/fairplay/fairplay_service.dart';
 import '../../security_layer/secure_storage/secure_storage_service.dart';
+
+/// DEBUG-ONLY: shows the FairPlay diagnostics log in a scrollable sheet.
+Future<void> _showFairplayLog(BuildContext context) async {
+  final log = await FairplayService.readDiagnostics();
+  if (!context.mounted) return;
+  await showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: const Color(0xFF1A1A2E),
+    isScrollControlled: true,
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('FairPlay diagnostics',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold)),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.white38),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: SingleChildScrollView(
+                child: SelectableText(
+                  log.isEmpty ? '(log is empty)' : log,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
 
 class AppDrawer extends ConsumerWidget {
@@ -93,6 +138,17 @@ class AppDrawer extends ConsumerWidget {
               onTap: () {
                 Navigator.of(context).pop();
                 context.push('/personal-quizzes');
+              },
+            ),
+            // DEBUG-ONLY (import/isImported diagnosis on devices we cannot
+            // pull logs from): shows the FairPlay diagnostics log in a sheet.
+            // Reads an empty file on non-iOS platforms — harmless.
+            _DrawerTile(
+              icon: Icons.bug_report_rounded,
+              label: 'FairPlay Log (DEBUG)',
+              onTap: () {
+                Navigator.of(context).pop();
+                _showFairplayLog(context);
               },
             ),
             const Spacer(),
