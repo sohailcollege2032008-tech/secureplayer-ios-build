@@ -3,11 +3,22 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/constants/app_links.dart';
 import '../../core/constants/debug_flags.dart';
 import '../../features/quiz/quiz_history_service.dart';
 import '../../security_layer/fairplay/fairplay_service.dart';
 import '../../security_layer/secure_storage/secure_storage_service.dart';
+
+/// Opens a public web page in the system browser. Fails silently rather than
+/// throwing into the widget tree — a missing browser must never break the
+/// drawer, and the App Store metadata carries the same policy URL anyway.
+Future<void> _openExternal(String url) async {
+  try {
+    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  } catch (_) {}
+}
 
 /// DEBUG-ONLY: shows the FairPlay diagnostics log in a scrollable sheet.
 Future<void> _showFairplayLog(BuildContext context) async {
@@ -139,6 +150,24 @@ class AppDrawer extends ConsumerWidget {
               onTap: () {
                 Navigator.of(context).pop();
                 context.push('/personal-quizzes');
+              },
+            ),
+            // Apple Guideline 5.1.1(i): the privacy policy must be reachable
+            // from inside the app, not only from App Store Connect metadata.
+            _DrawerTile(
+              icon: Icons.privacy_tip_outlined,
+              label: 'Privacy Policy',
+              onTap: () {
+                Navigator.of(context).pop();
+                _openExternal(kPrivacyPolicyUrl);
+              },
+            ),
+            _DrawerTile(
+              icon: Icons.help_outline_rounded,
+              label: 'Support',
+              onTap: () {
+                Navigator.of(context).pop();
+                _openExternal(kSupportUrl);
               },
             ),
             // Diagnostic builds only (--dart-define=FAIRPLAY_DEBUG_TOOLS=true).

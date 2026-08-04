@@ -82,11 +82,11 @@
 	<string>Lets you choose an image from your device to attach to a question in your own personal quiz. Images stay on your device.</string>
 <!-- الكاميرا (لحل المشكلة الأساسية) -->
 <key>NSCameraUsageDescription</key>
-<string>This app requires access to the camera to allow you to capture and upload photos directly within the app.</string>
+<string>Some course materials open in an in-app browser that may ask to use the camera. Secure Player never records photos or video on its own, and you are always asked before any access is granted.</string>
 
 <!-- الموقع (لحل رسالة التنبيه) -->
 <key>NSLocationWhenInUseUsageDescription</key>
-<string>This app requires access to your location to provide you with relevant local services and improve your experience.</string>
+<string>Some course materials open in an in-app browser that may ask for your location. Secure Player never collects or stores location data, and you are always asked before any access is granted.</string>
 
 </dict>
 </plist>
