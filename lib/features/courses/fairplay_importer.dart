@@ -33,6 +33,11 @@ class FairplayImporter {
     final metadata = await peekMetadata(filePath);
     final lectureId = metadata['lecture_id'] as String;
 
+    await FairplayService.logDiagnostics(
+      'IMPORT start: lectureId=$lectureId course_id=${metadata['course_id']} '
+      'videos=${(metadata['videos'] as List? ?? []).map((v) => v['id']).toList()}',
+    );
+
     final appDir = await getApplicationDocumentsDirectory();
     final destDir = Directory('${appDir.path}/fairplay_lectures/$lectureId');
     if (await destDir.exists()) {
@@ -53,6 +58,15 @@ class FairplayImporter {
     // video itself never needs this key, and a video without a separate
     // audio file doesn't either.
     await _fetchAndStoreCourseKey(lectureId, metadata);
+
+    // Diagnostic: verify the isImported marker the list UI relies on.
+    final supportDir = await getApplicationSupportDirectory();
+    final markerFile =
+        File('${supportDir.path}/courses/$lectureId/metadata.json');
+    await FairplayService.logDiagnostics(
+      'IMPORT done: marker=${markerFile.path} '
+      'exists=${await markerFile.exists()}',
+    );
 
     return lectureId;
   }

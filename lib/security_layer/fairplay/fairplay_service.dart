@@ -68,6 +68,20 @@ class FairplayService {
     return (await logFile.readAsString()).trim();
   }
 
+  /// Appends a line to the same diagnostics log the native side writes (so
+  /// the on-screen log button shows it). DEBUG-ONLY — used to diagnose
+  /// import/isImported mismatches on a device we cannot pull logs from.
+  static Future<void> logDiagnostics(String message) async {
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final logFile = File('${appDir.path}/fairplay_diagnostics.log');
+      final line = '[${DateTime.now().toIso8601String()}] $message\n';
+      final handle = await logFile.open(mode: FileMode.append);
+      await handle.writeString(line);
+      await handle.close();
+    } catch (_) {}
+  }
+
   /// Reads the owning courseId out of the extracted package's own
   /// metadata.json.
   ///

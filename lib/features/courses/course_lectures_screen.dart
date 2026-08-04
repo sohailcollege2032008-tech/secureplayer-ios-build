@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/errors/app_exception.dart';
+import '../../security_layer/fairplay/fairplay_service.dart';
 import '../../shared/widgets/app_drawer.dart';
 import '../../shared/widgets/loading_indicator.dart';
 import '../../core/models/announcement_model.dart';
@@ -63,6 +64,14 @@ class _CourseLecturesScreenState extends ConsumerState<CourseLecturesScreen> {
   Future<void> _refreshLectures() async {
     final page = await fetchCourseLecturesPage(courseId: widget.courseId);
     if (!mounted) return;
+    // DEBUG-ONLY diagnostics: which lectures the list sees, and what their
+    // isImported marker state is — the lock icon depends on it.
+    for (final l in page.items) {
+      FairplayService.logDiagnostics(
+        'LECTURE LIST: id=${l.lectureId} imported=${l.isImported} '
+        'videos=${l.videoCount}',
+      );
+    }
     setState(() {
       _lectures = page.items;
       _lecturesCursor = page.nextCursor;
