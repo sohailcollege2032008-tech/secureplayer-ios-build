@@ -155,10 +155,26 @@ class _CourseLecturesScreenState extends ConsumerState<CourseLecturesScreen> {
       );
       if (!mounted) return;
       navigator.pop();
+
+      // The Import button lives inside a course screen, which reads as
+      // "import into THIS course" — but import is global: the file lands in
+      // whichever course its own metadata names. Importing a file belonging
+      // to another course therefore showed a green success toast while the
+      // lecture the user was staring at stayed locked, which is
+      // indistinguishable from a failed import. This cost days of debugging a
+      // bug that did not exist. Say plainly when the file went elsewhere.
+      final belongsHere = _lectures.any((l) => l.lectureId == lectureId);
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Lecture imported!'),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: Text(
+            belongsHere
+                ? 'Lecture imported!'
+                : 'Imported — but this file belongs to a different course, '
+                    'so nothing here unlocks. Open the course it came from.',
+          ),
+          backgroundColor:
+              belongsHere ? Colors.green : Colors.orange.shade800,
+          duration: Duration(seconds: belongsHere ? 4 : 10),
         ),
       );
       unawaited(_refreshLectures());
