@@ -160,12 +160,18 @@ workflows:
           #
           # The offset is load-bearing: the main `secure` repo derives its
           # build number from git commit count alone, but that does NOT
-          # port here. This repo's commit count (~44) is far BELOW the
-          # numbers already uploaded manually (up to 138), so a raw count
-          # would move the build number backwards and be rejected. Starting
-          # above that manual history keeps it monotonic forever, and it
-          # still increments on its own with every commit.
-          BUILD_NUMBER=$((200 + $(git rev-list --count HEAD)))
+          # port here. This repo's commit count is far BELOW the numbers
+          # already uploaded manually, so a raw count would move the build
+          # number backwards and be rejected. Starting above that history
+          # keeps it monotonic, and it still increments with every commit.
+          #
+          # Raised 200 -> 220 on 2026-08-04. Builds have also been shipped
+          # by hand from pubspec.yaml (257, then 280 which reached App Store
+          # Connect), and the commit count had caught up to where 200+count
+          # would have re-emitted 280 — a duplicate App Store Connect
+          # rejects outright. Whenever a build is uploaded by any route
+          # other than this workflow, check this offset still clears it.
+          BUILD_NUMBER=$((220 + $(git rev-list --count HEAD)))
           echo "Stamping build number $BUILD_NUMBER"
           flutter build ipa --release \
             --build-number=$BUILD_NUMBER \
