@@ -28,6 +28,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart';
 
+import '../../core/constants/debug_flags.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/models/course_metadata.dart';
 import '../../core/models/quiz.dart';
@@ -677,14 +678,21 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen>
       if (!mounted || _fairplayProducedFrames || _playerErrorMessage != null) {
         return;
       }
-      final diagnostics = await FairplayService.readDiagnostics();
+      // The watchdog itself ships in production: without it a failed key
+      // exchange is an eternal spinner with no explanation. Only the raw
+      // native log is gated — a student gets a plain message, a diagnostic
+      // build gets the stage-by-stage detail.
+      final diagnostics =
+          kFairplayDebugTools ? await FairplayService.readDiagnostics() : '';
       if (!mounted) return;
       setState(() {
-        _playerErrorMessage =
-            'Video did not start within 20 seconds.\n'
-            'The FairPlay key exchange produced no frames.\n\n'
-            '--- FairPlay log ---\n'
-            '${diagnostics.isEmpty ? '(log empty — the native key delegate was never called)' : diagnostics}';
+        _playerErrorMessage = kFairplayDebugTools
+            ? 'Video did not start within 20 seconds.\n'
+                'The FairPlay key exchange produced no frames.\n\n'
+                '--- FairPlay log ---\n'
+                '${diagnostics.isEmpty ? '(log empty — the native key delegate was never called)' : diagnostics}'
+            : 'This video could not start. Check your connection and try '
+                'again. If it keeps happening, contact your instructor.';
       });
     });
   }

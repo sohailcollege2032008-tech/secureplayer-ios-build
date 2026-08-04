@@ -1,6 +1,12 @@
 # iOS FairPlay stall after the audio fix — investigation
 
-**Status: root cause identified, fix not yet written or verified.**
+> **SUPERSEDED for everything after the A/B/C/D experiment.**
+> Full journey (mixed-HLS dead end → parallel audio → current lock bug) is in
+> [`PARALLEL_AUDIO_JOURNEY.md`](./PARALLEL_AUDIO_JOURNEY.md). Keep this file as
+> the historical record of the early stall theories only.
+
+**Status (historical): root cause of freeze = DEFAULT=YES audio rendition.
+Fix path = parallel audio (see the doc above), not the pending-key patch below.**
 Started 2026-08-02.
 
 ## UPDATE 2026-08-03 (2nd) — scope of the freeze confirmed: ANY new export

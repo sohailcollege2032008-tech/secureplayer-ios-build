@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/constants/debug_flags.dart';
 import '../../features/quiz/quiz_history_service.dart';
 import '../../security_layer/fairplay/fairplay_service.dart';
 import '../../security_layer/secure_storage/secure_storage_service.dart';
@@ -140,17 +141,17 @@ class AppDrawer extends ConsumerWidget {
                 context.push('/personal-quizzes');
               },
             ),
-            // DEBUG-ONLY (import/isImported diagnosis on devices we cannot
-            // pull logs from): shows the FairPlay diagnostics log in a sheet.
-            // Reads an empty file on non-iOS platforms — harmless.
-            _DrawerTile(
-              icon: Icons.bug_report_rounded,
-              label: 'FairPlay Log (DEBUG)',
-              onTap: () {
-                Navigator.of(context).pop();
-                _showFairplayLog(context);
-              },
-            ),
+            // Diagnostic builds only (--dart-define=FAIRPLAY_DEBUG_TOOLS=true).
+            // Absent from production. See core/constants/debug_flags.dart.
+            if (kFairplayDebugTools)
+              _DrawerTile(
+                icon: Icons.bug_report_rounded,
+                label: 'FairPlay Log',
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showFairplayLog(context);
+                },
+              ),
             const Spacer(),
             const Divider(color: Colors.white12, height: 1),
             _DrawerTile(

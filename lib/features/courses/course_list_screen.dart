@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/constants/debug_flags.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/version_info.dart';
 import '../../features/auth/auth_providers.dart';
@@ -94,8 +95,12 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
   Future<void> _autoImportFairplayDemo() async {
     const lectureId = 'fairplay_demo_001';
     const videoId = 'video_01';
+    // Stage-by-stage toasts are diagnostic noise for a real user — the demo
+    // import is meant to be invisible. Kept behind the flag because when this
+    // auto-import fails it fails silently, and these toasts are the only
+    // visible trace of which stage broke.
     void report(String msg) {
-      if (!mounted) return;
+      if (!mounted || !kFairplayDebugTools) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('[FP demo] $msg'), duration: const Duration(seconds: 6)),
       );
