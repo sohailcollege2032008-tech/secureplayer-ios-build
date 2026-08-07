@@ -234,14 +234,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 : null,
                       ),
                       const SizedBox(height: 16),
+                      // Optional by requirement, not by preference: Apple
+                      // rejected build 300 under Guideline 5.1.1(v) for making
+                      // this mandatory. The app functions fully without it —
+                      // it only enriches the anti-piracy watermark, which
+                      // already falls back to name/email when the phone is
+                      // blank (see watermark_overlay.dart _buildText). Do not
+                      // add a required-validator back here.
                       _buildTextField(
                         controller: _phoneController,
-                        label: 'Phone Number',
+                        label: 'Phone Number (optional)',
                         icon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
-                        validator: (v) => v == null || v.trim().isEmpty
-                            ? 'Enter your phone number'
-                            : null,
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(

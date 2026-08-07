@@ -125,8 +125,14 @@ class _WatermarkOverlayState extends State<WatermarkOverlay>
 
   String _buildText() {
     // When config is off (video watermark legacy path), show name+phone always.
+    // Phone is optional at registration (Guideline 5.1.1(v)), so it is routinely
+    // blank — joining unconditionally left a trailing empty line that pushed the
+    // watermark off-centre.
     if (!widget.config.enabled) {
-      return '${widget.studentName}\n${widget.phoneNumber}';
+      return [
+        if (widget.studentName.isNotEmpty) widget.studentName,
+        if (widget.phoneNumber.isNotEmpty) widget.phoneNumber,
+      ].join('\n');
     }
     final parts = <String>[
       if (widget.config.showName && widget.studentName.isNotEmpty) widget.studentName,

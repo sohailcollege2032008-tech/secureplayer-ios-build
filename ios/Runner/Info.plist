@@ -34,10 +34,19 @@
 	     required. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
-	</array>
+	<!-- UIBackgroundModes is deliberately ABSENT. Do not re-add "audio".
+	     It arrived with the initial Flutter/better_player scaffold (better_player's
+	     own setup docs tell you to add it) and sat here unused until Apple rejected
+	     build 300 under Guideline 2.5.4: the app declared background audio but has
+	     no feature that plays anything once it leaves the foreground.
+	     Nor should it. This is a DRM-protected video app with screen-capture
+	     blocking — audio continuing with the screen locked is a leak path, not a
+	     feature. Removing the key does NOT affect playback: foreground sound comes
+	     from the AVAudioSession *category*, set in code and entirely separate
+	     (AudioSyncChannel.swift setCategory(.playback), BetterPlayer.swift likewise).
+	     If background playback is ever genuinely wanted, adding the key back is not
+	     enough — Apple requires a screen recording of the feature working on a
+	     physical device, attached in App Review Information. -->
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -61,26 +70,25 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<!-- Only the photo-library string is declared, and it describes a real
-	     feature: attaching an image to a question in a personal quiz
-	     (personal_quiz_editor_screen.dart's _pickImage).
-	     Camera and location strings were deliberately removed. Nothing on
-	     iOS uses either: there is no camera or location API anywhere in the
-	     Dart code, and the in-app HTML viewer that could theoretically
-	     request them via WebKit has no iOS code path at all
-	     (html_file_viewer.dart branches only on Platform.isWindows /
-	     Platform.isAndroid). The previous strings said, in effect, "the app
-	     does not use this" — exactly the vague, non-committal phrasing
-	     Guideline 5.1.1(i) rejects, and declaring capabilities the app never
-	     exercises also invites avoidable reviewer scrutiny and complicates
-	     the App Privacy questionnaire.
-	     If a future upload ever returns ITMS-90683 naming one of these keys,
-	     that is an upload-validation message that names the exact key and is
-	     fixed in minutes — a far cheaper failure than a review rejection
-	     over an unconvincing purpose string. -->
+	<!-- All three strings are required and all three describe real behaviour.
+	     Do not remove the camera or location strings again.
+
+	     History, so this is not re-litigated: they were deleted in e8176d7 on
+	     the stated grounds that "the in-app HTML viewer has no iOS code path
+	     at all (html_file_viewer.dart branches only on Windows/Android)".
+	     That was simply wrong — it cited a path that does not exist, and the
+	     real viewer does run on iOS:
+	       lib/shared/webview_session.dart:121  if (Platform.isAndroid || Platform.isIOS)
+	       lib/shared/html_file_viewer.dart:165 suppressTransientHold: Platform.isIOS
+	     Course materials open in a WKWebView, and any page inside it can ask
+	     for camera or location. Deleting the strings produced ITMS-90683 on
+	     upload and had to be reverted.
+
+	     NSPhotoLibraryUsageDescription covers a first-party feature: attaching
+	     an image to a question in a personal quiz
+	     (personal_quiz_editor_screen.dart's _pickImage). -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Lets you choose an image from your device to attach to a question in your own personal quiz. Images stay on your device.</string>
-<!-- الكاميرا (لحل المشكلة الأساسية) -->
 <key>NSCameraUsageDescription</key>
 <string>Some course materials open in an in-app browser that may ask to use the camera. Secure Player never records photos or video on its own, and you are always asked before any access is granted.</string>
 
