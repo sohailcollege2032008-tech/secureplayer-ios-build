@@ -1,7 +1,14 @@
 name: secure_player
 description: SecurePlayer - Offline encrypted educational video platform for students.
 publish_to: 'none'
-version: 1.0.0+300
+# Build number MUST be bumped by hand before any build that is NOT run through
+# the ios-app-store-release workflow. Only that workflow overrides this value
+# (codemagic.yaml passes --build-number=$((220 + commit count))); the three
+# other workflows, and any local Xcode/flutter build, use exactly what is
+# written here. Leaving a stale number is why uploads fail at the very last
+# step: App Store Connect rejects a build number it has already seen.
+# 300 was reviewed and rejected on 2026-08-07 — never reuse it.
+version: 1.0.0+303
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
